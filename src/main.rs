@@ -74,5 +74,5 @@ fn process_start(game: &mut Game) {
 }
 
 fn print_board(fen: &str) {
-    
+    todo!()
 }
