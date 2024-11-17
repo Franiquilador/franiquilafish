@@ -11,14 +11,14 @@ impl Board {
         let initial_pos = String::from("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
         Board {
             fen: initial_pos,
-            pieces: [[Rook(White), Knight(White), Bishop(White), Queen(White), King(White), Bishop(White), Knight(White), Rook(White)],
-            [Pawn(White), Pawn(White), Pawn(White), Pawn(White), Pawn(White), Pawn(White), Pawn(White), Pawn(White)],
+            pieces: [[Rook(Black), Knight(Black), Bishop(Black), Queen(Black), King(Black), Bishop(Black), Knight(Black), Rook(Black)],
+            [Pawn(Black), Pawn(Black), Pawn(Black), Pawn(Black), Pawn(Black), Pawn(Black), Pawn(Black), Pawn(Black)],
             [Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty],
             [Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty],
             [Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty],
             [Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty],
-            [Pawn(Black), Pawn(Black), Pawn(Black), Pawn(Black), Pawn(Black), Pawn(Black), Pawn(Black), Pawn(Black),],
-            [Rook(Black), Knight(Black), Bishop(Black), Queen(Black), King(Black), Bishop(Black), Knight(Black), Rook(Black)]]
+            [Pawn(White), Pawn(White), Pawn(White), Pawn(White), Pawn(White), Pawn(White), Pawn(White), Pawn(White),],
+            [Rook(White), Knight(White), Bishop(White), Queen(White), King(White), Bishop(White), Knight(White), Rook(White)]]
         }
     }
 
@@ -30,11 +30,14 @@ impl Board {
         let mut substrings: Vec<&str> = self.fen.split(" ").collect();
         if substrings.len() > 1 {
             match active_player {
-                Black => substrings[1] = "b",
-                White => substrings[1] = "w",
+                White => substrings[1] = "b",
+                Black => substrings[1] = "w",
             }
         }
     }
 
+    pub fn get_pieces(&self) -> &[[Piece; 8]; 8] {
+        &self.pieces
+    }
     
 }

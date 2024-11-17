@@ -1,10 +1,10 @@
 use std::io::{self, Write};
-use chess_cl::chess::{game::Game, start_match};
+use chess_cl::chess::{game::Game, start_match, piece::{Piece::*, Piece, Color::*, Color}};
 
 enum Command {
     Help,
     Quit,
-    Start,
+    NewGame,
     Unknown(String),
 }
 
@@ -14,7 +14,7 @@ impl Command {
         match input.trim().to_lowercase().as_str() {
             "help" => Command::Help,
             "quit" => Command::Quit,
-            "start" => Command::Start,
+            "new" => Command::NewGame,
             other => Command::Unknown(other.to_string()),
         }
     }
@@ -29,14 +29,18 @@ fn unsafe_crash() {
 }
 */
 
+
+// time, serde and board ranks (1-8) and files (a-h) to std in
 fn main() {    
     let mut game = Game::new();
     println!("Type 'help' for commands");
 
     while game.is_running() {
         let mut input = String::new();
-        print!("> ");
-
+        if !game.has_started() {
+            print!("> ");
+        }
+        
         /*
         * so that "> " is printed immediatly instead of waiting for the output buffer to full,
         * to then system call the os to write to stdout
@@ -54,7 +58,7 @@ fn process_command(command: Command, game: &mut Game) {
     match command {
         Command::Help => process_help(),
         Command::Quit => game.close(),
-        Command::Start => process_start(game),
+        Command::NewGame => process_new(game),
         Command::Unknown(cmd) => {
             println!("Unknow command '{cmd}'. Type 'help' for commands");
         }
@@ -63,16 +67,45 @@ fn process_command(command: Command, game: &mut Game) {
 
 fn process_help() {
     println!("help - prints usefull information about all available commands");
-    println!("start - start a chess game");
+    println!("new - creates a new chess game");
     println!("quit - terminate the chess game");
 }
 
-fn process_start(game: &mut Game) {
+fn process_new(game: &mut Game) {
     game.start();
-    print_board(game.get_board().get_fen());
+    print_board(game.get_board().get_pieces(), game.get_active_player());
     
 }
 
-fn print_board(fen: &str) {
-    todo!()
+fn print_board(pieces: &[[Piece; 8]; 8], active_player: &Color) {
+    println!("  +---+---+---+---+---+---+---+---+");
+    for (i, rank) in pieces.iter().enumerate() {
+        print!("{} |", 8 - i);
+        for piece in rank {
+            match piece {
+                Empty => print!("   |"),
+                Rook(White) => print!(" R |"),
+                Knight(White) => print!(" N |"),
+                Bishop(White) => print!(" B |"),
+                Queen(White) => print!(" Q |"),
+                King(White) => print!(" K |"),
+                Pawn(White) => print!(" P |"),
+                Rook(Black) => print!(" r |"),
+                Knight(Black) => print!(" n |"),
+                Bishop(Black) => print!(" b |"),
+                Queen(Black) => print!(" q |"),
+                King(Black) => print!(" k |"),
+                Pawn(Black) => print!(" p |"),
+            }
+        }
+        println!();
+        println!("  +---+---+---+---+---+---+---+---+");
+    }
+    println!("    a   b   c   d   e   f   g   h");
+    println!();
+    match active_player {
+        White => print!("White to play: "),
+        Black => print!("Black to play: "),
+    }
+
 }
