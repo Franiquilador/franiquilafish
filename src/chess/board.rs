@@ -22,12 +22,18 @@ impl Board {
         }
     }
 
-    pub fn getFen(&self) -> &String {
+    pub fn get_fen(&self) -> &String {
         &self.fen
     }
 
-    pub fn setCurrentPlayerInFen(&mut self) {
-        todo!()
+    pub fn set_current_player_in_fen(&mut self, active_player: Color) {
+        let mut substrings: Vec<&str> = self.fen.split(" ").collect();
+        if substrings.len() > 1 {
+            match active_player {
+                Black => substrings[1] = "b",
+                White => substrings[1] = "w",
+            }
+        }
     }
 
     

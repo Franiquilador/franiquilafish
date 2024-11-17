@@ -69,7 +69,7 @@ fn process_help() {
 
 fn process_start(game: &mut Game) {
     game.start();
-    print_board(game.getBoard().getFen());
+    print_board(game.get_board().get_fen());
     
 }
 

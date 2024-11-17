@@ -33,21 +33,21 @@ impl Game {
     pub fn play(&mut self) {
         if let Color::White = self.color_playing {
             self.color_playing = Color::Black;
+            self.board.set_current_player_in_fen(Color::Black);
         } else {
             self.color_playing = Color::White;
+            self.board.set_current_player_in_fen(Color::White);
         }
-        self.board.setCurrentPlayerInFen();
     }
 
     pub fn start(&self) {
         todo!()
     }
 
-    pub fn getBoard(&self) -> &Board {
+    pub fn get_board(&self) -> &Board {
         &self.board
     }
 }
-
 
 
 
