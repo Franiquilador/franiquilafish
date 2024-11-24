@@ -2,9 +2,7 @@ use crate::chess::board;
 use board::Board;
 use crate::chess::piece::{Color};
 
-use super::piece::Piece;
 
-//#[derive(Clone)]
 pub struct Game {
     is_running: bool,
     game_state: GameState,
@@ -54,10 +52,11 @@ impl Game {
     }
 
     pub fn has_started(&self) -> bool {
-        match self.game_state {
+        match &self.game_state {
             GameState::Created => false,
             GameState::Playing => true,
-            GameState::CheckMate => true,
+            GameState::CheckMate(c) => true,
+            GameState::StaleMate(c) => true,
         }
     }
 }
@@ -68,7 +67,8 @@ impl Game {
 
 enum GameState {
     Playing, // created and started (ongoing game)
-    CheckMate,
+    CheckMate(Color),
+    StaleMate(Color),
     Created, // new game created but not started
 }
 

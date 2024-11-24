@@ -1,4 +1,4 @@
-use crate::chess::piece::{Piece::*, Color::*};
+use crate::chess::piece::{Piece as P, Color as C};
 use crate::chess::piece::{Piece, Color};
 
 pub struct Board {
@@ -11,14 +11,14 @@ impl Board {
         let initial_pos = String::from("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
         Board {
             fen: initial_pos,
-            pieces: [[Rook(Black), Knight(Black), Bishop(Black), Queen(Black), King(Black), Bishop(Black), Knight(Black), Rook(Black)],
-            [Pawn(Black), Pawn(Black), Pawn(Black), Pawn(Black), Pawn(Black), Pawn(Black), Pawn(Black), Pawn(Black)],
-            [Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty],
-            [Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty],
-            [Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty],
-            [Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty],
-            [Pawn(White), Pawn(White), Pawn(White), Pawn(White), Pawn(White), Pawn(White), Pawn(White), Pawn(White),],
-            [Rook(White), Knight(White), Bishop(White), Queen(White), King(White), Bishop(White), Knight(White), Rook(White)]]
+            pieces: [[P::Rook(C::Black), P::Knight(C::Black), P::Bishop(C::Black), P::Queen(C::Black), P::King(C::Black), P::Bishop(C::Black), P::Knight(C::Black), P::Rook(C::Black)],
+            [P::Pawn(C::Black), P::Pawn(C::Black), P::Pawn(C::Black), P::Pawn(C::Black), P::Pawn(C::Black), P::Pawn(C::Black), P::Pawn(C::Black), P::Pawn(C::Black)],
+            [P::Empty, P::Empty, P::Empty, P::Empty, P::Empty, P::Empty, P::Empty, P::Empty],
+            [P::Empty, P::Empty, P::Empty, P::Empty, P::Empty, P::Empty, P::Empty, P::Empty],
+            [P::Empty, P::Empty, P::Empty, P::Empty, P::Empty, P::Empty, P::Empty, P::Empty],
+            [P::Empty, P::Empty, P::Empty, P::Empty, P::Empty, P::Empty, P::Empty, P::Empty],
+            [P::Pawn(C::White), P::Pawn(C::White), P::Pawn(C::White), P::Pawn(C::White), P::Pawn(C::White), P::Pawn(C::White), P::Pawn(C::White), P::Pawn(C::White),],
+            [P::Rook(C::White), P::Knight(C::White), P::Bishop(C::White), P::Queen(C::White), P::King(C::White), P::Bishop(C::White), P::Knight(C::White), P::Rook(C::White)]]
         }
     }
 
@@ -30,8 +30,8 @@ impl Board {
         let mut substrings: Vec<&str> = self.fen.split(" ").collect();
         if substrings.len() > 1 {
             match active_player {
-                White => substrings[1] = "b",
-                Black => substrings[1] = "w",
+                C::White => substrings[1] = "b",
+                C::Black => substrings[1] = "w",
             }
         }
     }

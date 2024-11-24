@@ -1,5 +1,5 @@
 use std::io::{self, Write};
-use chess_cl::chess::{game::Game, start_match, piece::{Piece::*, Piece, Color::*, Color}};
+use chess_cl::chess::{game::Game, start_match, piece::{Piece as P, Piece, Color as C, Color}};
 
 enum Command {
     Help,
@@ -83,19 +83,19 @@ fn print_board(pieces: &[[Piece; 8]; 8], active_player: &Color) {
         print!("{} |", 8 - i);
         for piece in rank {
             match piece {
-                Empty => print!("   |"),
-                Rook(White) => print!(" R |"),
-                Knight(White) => print!(" N |"),
-                Bishop(White) => print!(" B |"),
-                Queen(White) => print!(" Q |"),
-                King(White) => print!(" K |"),
-                Pawn(White) => print!(" P |"),
-                Rook(Black) => print!(" r |"),
-                Knight(Black) => print!(" n |"),
-                Bishop(Black) => print!(" b |"),
-                Queen(Black) => print!(" q |"),
-                King(Black) => print!(" k |"),
-                Pawn(Black) => print!(" p |"),
+                P::Empty => print!("   |"),
+                P::Rook(C::White) => print!(" R |"),
+                P::Knight(C::White) => print!(" N |"),
+                P::Bishop(C::White) => print!(" B |"),
+                P::Queen(C::White) => print!(" Q |"),
+                P::King(C::White) => print!(" K |"),
+                P::Pawn(C::White) => print!(" P |"),
+                P::Rook(C::Black) => print!(" r |"),
+                P::Knight(C::Black) => print!(" n |"),
+                P::Bishop(C::Black) => print!(" b |"),
+                P::Queen(C::Black) => print!(" q |"),
+                P::King(C::Black) => print!(" k |"),
+                P::Pawn(C::Black) => print!(" p |"),
             }
         }
         println!();
@@ -104,8 +104,8 @@ fn print_board(pieces: &[[Piece; 8]; 8], active_player: &Color) {
     println!("    a   b   c   d   e   f   g   h");
     println!();
     match active_player {
-        White => print!("White to play: "),
-        Black => print!("Black to play: "),
+        C::White => print!("White to play: "),
+        C::Black => print!("Black to play: "),
     }
 
 }
