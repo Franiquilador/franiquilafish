@@ -1,5 +1,9 @@
+use chess_cl::chess::{
+    game::{Color, Game, GameState},
+    piece::{ChessPiece as CP, ChessPiece, Piece as P},
+    start_match,
+};
 use std::io::{self, Write};
-use chess_cl::chess::{game::Game, start_match, piece::{Piece as P, Piece, Color as C, Color}};
 
 enum Command {
     Help,
@@ -24,14 +28,13 @@ impl Command {
 fn unsafe_crash() {
     let adress = 0x125usize;
     let r1 = adress as *const i32;
-    
+
     println!("r1 is {}", unsafe { *r1 } );
 }
 */
 
-
-// time, serde and board ranks (1-8) and files (a-h) to std in
-fn main() {    
+// time, serde
+fn main() {
     let mut game = Game::new();
     println!("Type 'help' for commands");
 
@@ -40,28 +43,46 @@ fn main() {
         if !game.has_started() {
             print!("> ");
         }
-        
+
         /*
-        * so that "> " is printed immediatly instead of waiting for the output buffer to full,
-        * to then system call the os to write to stdout
-        */
-        std::io::stdout().flush().expect("failed to flush the output buffer");
-        io::stdin().read_line(&mut input).expect("Failed to read line");
+         * so that "> " is printed immediatly instead of waiting for the output buffer to full,
+         * to then system call the os to write to stdout
+         */
+        std::io::stdout()
+            .flush()
+            .expect("failed to flush the output buffer");
+        io::stdin()
+            .read_line(&mut input)
+            .expect("Failed to read line");
 
         let command = Command::from_input(&input);
         process_command(command, &mut game);
     }
-    
+
+    /*
+    let mut n = "fdsf".to_string();
+    let refr1 = &n;
+    println!("{}", *refr1);
+
+    std::mem::drop(n);
+
+    // println!("{}", *refr1);
+    // let m_refr = &mut n;
+    // println!("{}", *m_refr);
+    */
 }
 
 fn process_command(command: Command, game: &mut Game) {
-    match command {
-        Command::Help => process_help(),
-        Command::Quit => game.close(),
-        Command::NewGame => process_new(game),
-        Command::Unknown(cmd) => {
-            println!("Unknow command '{cmd}'. Type 'help' for commands");
-        }
+    match game.game_state() {
+        GameState::Playing => todo!("move commands"),
+        _ => match command {
+            Command::Help => process_help(),
+            Command::Quit => game.close(),
+            Command::NewGame => process_new(game),
+            Command::Unknown(cmd) => {
+                println!("Unknow command '{cmd}'. Type 'help' for commands");
+            }
+        },
     }
 }
 
@@ -74,16 +95,34 @@ fn process_help() {
 fn process_new(game: &mut Game) {
     game.start();
     print_board(game.get_board().get_pieces(), game.get_active_player());
-    
 }
 
-fn print_board(pieces: &[[Piece; 8]; 8], active_player: &Color) {
+fn print_board(pieces: &[[Option<ChessPiece>; 8]; 8], active_player: &Color) {
     println!("  +---+---+---+---+---+---+---+---+");
+
     for (i, rank) in pieces.iter().enumerate() {
         print!("{} |", 8 - i);
         for piece in rank {
             match piece {
-                P::Empty => print!("   |"),
+                None => print!("   |"),
+                Some(p) => match p {
+                    CP::White(P::Rook) => print!(" R |"),
+                    CP::White(P::Knight) => print!(" N |"),
+                    CP::White(P::Bishop) => print!(" B |"),
+                    CP::White(P::Queen) => print!(" Q |"),
+                    CP::White(P::King) => print!(" K |"),
+                    CP::White(P::Pawn) => print!(" P |"),
+                    CP::Black(P::Rook) => print!(" r |"),
+                    CP::Black(P::Knight) => print!(" n |"),
+                    CP::Black(P::Bishop) => print!(" b |"),
+                    CP::Black(P::Queen) => print!(" q |"),
+                    CP::Black(P::King) => print!(" k |"),
+                    CP::Black(P::Pawn) => print!(" p |"),
+                },
+            }
+            /*
+            match piece {
+                Empty => print!("   |"),
                 P::Rook(C::White) => print!(" R |"),
                 P::Knight(C::White) => print!(" N |"),
                 P::Bishop(C::White) => print!(" B |"),
@@ -97,6 +136,7 @@ fn print_board(pieces: &[[Piece; 8]; 8], active_player: &Color) {
                 P::King(C::Black) => print!(" k |"),
                 P::Pawn(C::Black) => print!(" p |"),
             }
+            */
         }
         println!();
         println!("  +---+---+---+---+---+---+---+---+");
@@ -104,8 +144,7 @@ fn print_board(pieces: &[[Piece; 8]; 8], active_player: &Color) {
     println!("    a   b   c   d   e   f   g   h");
     println!();
     match active_player {
-        C::White => print!("White to play: "),
-        C::Black => print!("Black to play: "),
+        Color::White => print!("White to play: "),
+        Color::Black => print!("Black to play: "),
     }
-
 }

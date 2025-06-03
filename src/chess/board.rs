@@ -1,9 +1,9 @@
-use crate::chess::piece::{Piece as P, Color as C};
-use crate::chess::piece::{Piece, Color};
+use crate::chess::game::Color;
+use crate::chess::piece::{ChessPiece as CP, ChessPiece, Piece as P};
 
 pub struct Board {
     fen: String,
-    pieces: [[Piece; 8]; 8],
+    pieces: [[Option<ChessPiece>; 8]; 8],
 }
 
 impl Board {
@@ -11,14 +11,52 @@ impl Board {
         let initial_pos = String::from("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
         Board {
             fen: initial_pos,
-            pieces: [[P::Rook(C::Black), P::Knight(C::Black), P::Bishop(C::Black), P::Queen(C::Black), P::King(C::Black), P::Bishop(C::Black), P::Knight(C::Black), P::Rook(C::Black)],
-            [P::Pawn(C::Black), P::Pawn(C::Black), P::Pawn(C::Black), P::Pawn(C::Black), P::Pawn(C::Black), P::Pawn(C::Black), P::Pawn(C::Black), P::Pawn(C::Black)],
-            [P::Empty, P::Empty, P::Empty, P::Empty, P::Empty, P::Empty, P::Empty, P::Empty],
-            [P::Empty, P::Empty, P::Empty, P::Empty, P::Empty, P::Empty, P::Empty, P::Empty],
-            [P::Empty, P::Empty, P::Empty, P::Empty, P::Empty, P::Empty, P::Empty, P::Empty],
-            [P::Empty, P::Empty, P::Empty, P::Empty, P::Empty, P::Empty, P::Empty, P::Empty],
-            [P::Pawn(C::White), P::Pawn(C::White), P::Pawn(C::White), P::Pawn(C::White), P::Pawn(C::White), P::Pawn(C::White), P::Pawn(C::White), P::Pawn(C::White),],
-            [P::Rook(C::White), P::Knight(C::White), P::Bishop(C::White), P::Queen(C::White), P::King(C::White), P::Bishop(C::White), P::Knight(C::White), P::Rook(C::White)]]
+            pieces: [
+                [
+                    Some(CP::Black(P::Rook)),
+                    Some(CP::Black(P::Knight)),
+                    Some(CP::Black(P::Bishop)),
+                    Some(CP::Black(P::Queen)),
+                    Some(CP::Black(P::King)),
+                    Some(CP::Black(P::Bishop)),
+                    Some(CP::Black(P::Knight)),
+                    Some(CP::Black(P::Rook)),
+                ],
+                [
+                    Some(CP::Black(P::Pawn)),
+                    Some(CP::Black(P::Pawn)),
+                    Some(CP::Black(P::Pawn)),
+                    Some(CP::Black(P::Pawn)),
+                    Some(CP::Black(P::Pawn)),
+                    Some(CP::Black(P::Pawn)),
+                    Some(CP::Black(P::Pawn)),
+                    Some(CP::Black(P::Pawn)),
+                ],
+                [None, None, None, None, None, None, None, None],
+                [None, None, None, None, None, None, None, None],
+                [None, None, None, None, None, None, None, None],
+                [None, None, None, None, None, None, None, None],
+                [
+                    Some(CP::White(P::Pawn)),
+                    Some(CP::White(P::Pawn)),
+                    Some(CP::White(P::Pawn)),
+                    Some(CP::White(P::Pawn)),
+                    Some(CP::White(P::Pawn)),
+                    Some(CP::White(P::Pawn)),
+                    Some(CP::White(P::Pawn)),
+                    Some(CP::White(P::Pawn)),
+                ],
+                [
+                    Some(CP::White(P::Rook)),
+                    Some(CP::White(P::Knight)),
+                    Some(CP::White(P::Bishop)),
+                    Some(CP::White(P::Queen)),
+                    Some(CP::White(P::King)),
+                    Some(CP::White(P::Bishop)),
+                    Some(CP::White(P::Knight)),
+                    Some(CP::White(P::Rook)),
+                ],
+            ],
         }
     }
 
@@ -30,14 +68,13 @@ impl Board {
         let mut substrings: Vec<&str> = self.fen.split(" ").collect();
         if substrings.len() > 1 {
             match active_player {
-                C::White => substrings[1] = "b",
-                C::Black => substrings[1] = "w",
+                Color::White => substrings[1] = "b",
+                Color::Black => substrings[1] = "w",
             }
         }
     }
 
-    pub fn get_pieces(&self) -> &[[Piece; 8]; 8] {
+    pub fn get_pieces(&self) -> &[[Option<ChessPiece>; 8]; 8] {
         &self.pieces
     }
-    
 }

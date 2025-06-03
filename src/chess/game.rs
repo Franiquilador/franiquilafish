@@ -1,6 +1,18 @@
 use crate::chess::board;
 use board::Board;
-use crate::chess::piece::{Color};
+// use crate::chess::piece::{Color};
+
+pub enum Color {
+    Black,
+    White,
+}
+
+pub enum GameState {
+    Playing, // created and started (ongoing game)
+    CheckMate(Color),
+    StaleMate(Color),
+    Created, // new game created but not started
+}
 
 
 pub struct Game {
@@ -43,6 +55,10 @@ impl Game {
         // todo!()
     }
 
+    pub fn game_state(&self) -> &GameState {
+        &self.game_state
+    }
+
     pub fn get_board(&self) -> &Board {
         &self.board
     }
@@ -59,16 +75,5 @@ impl Game {
             GameState::StaleMate(c) => true,
         }
     }
-}
-
-
-
-
-
-enum GameState {
-    Playing, // created and started (ongoing game)
-    CheckMate(Color),
-    StaleMate(Color),
-    Created, // new game created but not started
 }
 
