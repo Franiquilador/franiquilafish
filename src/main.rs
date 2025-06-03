@@ -12,13 +12,18 @@ enum Command {
     Unknown(String),
 }
 
+const HELP: &str = "help";
+const NEW_GAME: &str = "new";
+const QUIT: &str = "quit";
+
+
 impl Command {
     // reads input as &str and returns an enum for pattern matching
     fn from_input(input: &str) -> Self {
         match input.trim().to_lowercase().as_str() {
-            "help" => Command::Help,
-            "quit" => Command::Quit,
-            "new" => Command::NewGame,
+            HELP => Command::Help,
+            QUIT => Command::Quit,
+            NEW_GAME => Command::NewGame,
             other => Command::Unknown(other.to_string()),
         }
     }
@@ -36,7 +41,8 @@ fn unsafe_crash() {
 // time, serde
 fn main() {
     let mut game = Game::new();
-    println!("Type 'help' for commands");
+    println!("This is chess in the command line!");
+    println!("Type '{HELP}' for commands");
 
     while game.is_running() {
         let mut input = String::new();
@@ -58,18 +64,6 @@ fn main() {
         let command = Command::from_input(&input);
         process_command(command, &mut game);
     }
-
-    /*
-    let mut n = "fdsf".to_string();
-    let refr1 = &n;
-    println!("{}", *refr1);
-
-    std::mem::drop(n);
-
-    // println!("{}", *refr1);
-    // let m_refr = &mut n;
-    // println!("{}", *m_refr);
-    */
 }
 
 fn process_command(command: Command, game: &mut Game) {
@@ -87,9 +81,9 @@ fn process_command(command: Command, game: &mut Game) {
 }
 
 fn process_help() {
-    println!("help - prints usefull information about all available commands");
-    println!("new - creates a new chess game");
-    println!("quit - terminate the chess game");
+    println!("{HELP} - prints usefull information about all available commands");
+    println!("{NEW_GAME} - creates a new chess game");
+    println!("{QUIT} - terminate the chess game");
 }
 
 fn process_new(game: &mut Game) {
@@ -120,23 +114,6 @@ fn print_board(pieces: &[[Option<ChessPiece>; 8]; 8], active_player: &Color) {
                     CP::Black(P::Pawn) => print!(" p |"),
                 },
             }
-            /*
-            match piece {
-                Empty => print!("   |"),
-                P::Rook(C::White) => print!(" R |"),
-                P::Knight(C::White) => print!(" N |"),
-                P::Bishop(C::White) => print!(" B |"),
-                P::Queen(C::White) => print!(" Q |"),
-                P::King(C::White) => print!(" K |"),
-                P::Pawn(C::White) => print!(" P |"),
-                P::Rook(C::Black) => print!(" r |"),
-                P::Knight(C::Black) => print!(" n |"),
-                P::Bishop(C::Black) => print!(" b |"),
-                P::Queen(C::Black) => print!(" q |"),
-                P::King(C::Black) => print!(" k |"),
-                P::Pawn(C::Black) => print!(" p |"),
-            }
-            */
         }
         println!();
         println!("  +---+---+---+---+---+---+---+---+");
