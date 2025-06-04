@@ -27,6 +27,10 @@ impl Command {
             other => Command::Unknown(other.to_string()),
         }
     }
+
+    fn get_move(input: &str) {
+        todo!("get move");
+    }
 }
 
 /*
@@ -61,22 +65,32 @@ fn main() {
             .read_line(&mut input)
             .expect("Failed to read line");
 
-        let command = Command::from_input(&input);
-        process_command(command, &mut game);
+        match game.game_state() {
+            GameState::Playing => {
+                todo!("move commands");
+                let m = Command::get_move(&input);
+                process_move( &mut game);
+            },
+            _ => {
+                let command = Command::from_input(&input);
+                process_command(command, &mut game);
+            },
+        }
     }
 }
 
+fn process_move(game: &mut Game) {
+
+}
+
 fn process_command(command: Command, game: &mut Game) {
-    match game.game_state() {
-        GameState::Playing => todo!("move commands"),
-        _ => match command {
+    match command {
             Command::Help => process_help(),
             Command::Quit => game.close(),
             Command::NewGame => process_new(game),
             Command::Unknown(cmd) => {
                 println!("Unknow command '{cmd}'. Type 'help' for commands");
             }
-        },
     }
 }
 
