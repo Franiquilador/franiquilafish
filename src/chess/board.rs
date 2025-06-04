@@ -1,4 +1,5 @@
 use crate::chess::game::Color;
+use crate::chess::move_square::{Move, Square};
 use crate::chess::piece::{ChessPiece as CP, ChessPiece, Piece as P};
 
 pub struct Board {
@@ -6,9 +7,11 @@ pub struct Board {
     pieces: [[Option<ChessPiece>; 8]; 8],
 }
 
+const INITIAL_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
 impl Board {
     pub fn new() -> Self {
-        let initial_pos = String::from("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+        let initial_pos = String::from(INITIAL_FEN);
         Board {
             fen: initial_pos,
             pieces: [
@@ -76,5 +79,9 @@ impl Board {
 
     pub fn get_pieces(&self) -> &[[Option<ChessPiece>; 8]; 8] {
         &self.pieces
+    }
+
+    pub fn is_move_valid(&self, m: Move) -> bool {
+        false
     }
 }

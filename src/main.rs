@@ -1,7 +1,5 @@
 use chess_cl::chess::{
-    game::{Color, Game, GameState},
-    piece::{ChessPiece as CP, ChessPiece, Piece as P},
-    start_match,
+    game::{Color, Game, GameState}, move_square::{self, Move}, piece::{ChessPiece as CP, ChessPiece, Piece as P}, start_match
 };
 use std::io::{self, Write};
 
@@ -28,8 +26,8 @@ impl Command {
         }
     }
 
-    fn get_move(input: &str) {
-        todo!("get move");
+    fn get_move_from_uci(input: &str) -> Option<Move> {
+        move_square::Move::from_uci_coords(input)
     }
 }
 
@@ -48,6 +46,7 @@ fn main() {
     println!("This is chess in the command line!");
     println!("Type '{HELP}' for commands");
 
+    
     while game.is_running() {
         let mut input = String::new();
         if !game.has_started() {
@@ -67,9 +66,11 @@ fn main() {
 
         match game.game_state() {
             GameState::Playing => {
-                todo!("move commands");
-                let m = Command::get_move(&input);
-                process_move( &mut game);
+                let m = Command::get_move_from_uci(&input);
+                match m {
+                    Some(valid) => process_move(&mut game, valid),
+                    None => println!("invalid move"),
+                }
             },
             _ => {
                 let command = Command::from_input(&input);
@@ -77,10 +78,15 @@ fn main() {
             },
         }
     }
+    
+    // let t = 'a'..='h';
+    // for c in t {
+    //     print!("{}", c);
+    // }
 }
 
-fn process_move(game: &mut Game) {
-
+fn process_move(game: &mut Game, m: Move) {
+    todo!("process move");
 }
 
 fn process_command(command: Command, game: &mut Game) {
