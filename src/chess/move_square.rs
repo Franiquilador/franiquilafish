@@ -1,12 +1,14 @@
 
+#[derive(PartialEq, Copy, Clone, Debug)] // for checking object equallity used in .contains of Vec
 pub struct Move {
-    starting_square: Square,
-    end_square: Square,
+    initial: Square,
+    end: Square,
 }
 
+#[derive(PartialEq, Copy, Clone, Debug)]
 pub struct Square {
-    file: char,
-    rank: u8,
+    pub rank: u8,
+    pub file: char,
 }
 
 
@@ -16,9 +18,21 @@ impl Move {
         let ending = Square::from_str(&coords[2..4])?;
 
         Some(Move {
-            starting_square: starting,
-            end_square: ending,
+            initial: starting,
+            end: ending,
         })
+    }
+
+    pub fn from_squares(start: Square, end: Square) -> Self {
+        Move { initial: start, end: end }
+    }
+
+    pub fn get_starting_square(&self) -> Square {
+        self.initial
+    }
+
+    pub fn get_final_square(&self) -> Square {
+        self.end   
     }
 }
 
@@ -35,7 +49,7 @@ impl Square {
 
     fn from_str(s: &str) -> Option<Self> {
         let mut chars= s.chars();
-        let file = chars.next()?;
+        let file = chars.next()?; // ? means if its None, the function returns early. otherwise return the value inside option
         let rank = chars.next()?.to_digit(BASE_TEN).map(|d| d as u8)?;
 
         if ('a'..='h').contains(&file) && (1..=8).contains(&rank) {
@@ -43,5 +57,12 @@ impl Square {
         } else {
             None
         }
+    }
+
+    pub fn offset(&self, file_offset: i8, rank_offset: i8) -> Option<Square> {
+        let new_file = (self.file as i8 + file_offset) as u8 as char;
+        let new_rank = self.rank as i8 + rank_offset;
+
+        Square::new(new_file, new_rank as u8)
     }
 }

@@ -1,7 +1,10 @@
+use std::vec;
+
 use crate::chess::board;
 use board::Board;
-// use crate::chess::piece::{Color};
+use crate::chess::move_square::Move;
 
+#[derive(PartialEq, Debug, Clone, Copy)]
 pub enum Color {
     Black,
     White,
@@ -10,7 +13,7 @@ pub enum Color {
 pub enum GameState {
     Playing, // created and started (ongoing game)
     CheckMate(Color),
-    StaleMate(Color),
+    StaleMate,
     Created, // new game created but not started
 }
 
@@ -20,6 +23,7 @@ pub struct Game {
     game_state: GameState,
     color_playing: Color,
     board: Board,
+    legal_moves: Vec<Move>,
 }
 
 impl Game {
@@ -29,6 +33,7 @@ impl Game {
             game_state: GameState::Created,
             color_playing: Color::White,
             board: Board::new(),
+            legal_moves: vec![],
         }
     }
 
@@ -40,13 +45,12 @@ impl Game {
         self.is_running = false;
     }
 
-    pub fn play(&mut self) {
+    fn update_active_player(&mut self) {
+        self.board.set_current_player_in_fen(&self.color_playing);
         if let Color::Black = self.color_playing {
-            self.color_playing = Color::Black;
-            self.board.set_current_player_in_fen(Color::Black);
+            self.color_playing = Color::White;
         } else {
             self.color_playing = Color::Black;
-            self.board.set_current_player_in_fen(Color::Black);
         }
     }
 
@@ -72,8 +76,37 @@ impl Game {
             GameState::Created => false,
             GameState::Playing => true,
             GameState::CheckMate(c) => true,
-            GameState::StaleMate(c) => true,
+            GameState::StaleMate => true,
         }
     }
-}
 
+    pub fn is_legal(&mut self, m: &Move) -> bool {
+        // dbg!(&self.color_playing);
+        self.legal_moves = self.board.get_legal_moves(&self.color_playing);
+
+        dbg!(&self.legal_moves);
+        println!("num of legal moves: {}", self.legal_moves.len());
+        // dbg!(m);
+
+        if self.legal_moves.contains(m) {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn move_piece(&mut self, m: &Move) {
+        
+        let moving_piece = self.board.get_piece_at_square(&m.get_starting_square()); // none if the square is empty
+        // dbg!(&self.board);
+        self.board.update_square(moving_piece, &m.get_final_square());
+
+        // dbg!(&self.board);
+        self.board.update_square(None, &&m.get_starting_square());
+        
+        // dbg!(&self.board);
+        self.update_active_player();
+        // todo!();
+
+    }
+}

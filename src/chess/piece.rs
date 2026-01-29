@@ -1,3 +1,7 @@
+use crate::chess::move_square::{Move, Square};
+use crate::chess::game::Color;
+
+#[derive(Copy, Clone, Debug)]
 pub enum Piece {
     King,
     Pawn,
@@ -7,31 +11,82 @@ pub enum Piece {
     Queen,
 }
 
-pub enum ChessPiece {
-    Black(Piece),
-    White(Piece),
+#[derive(Copy, Clone, Debug)]
+pub struct ChessPiece {
+    pub color: Color,
+    pub piece: Piece,
 }
 
-/*
-struct ChessPiece {
-    color: Color,
-    piece: Piece,
+impl ChessPiece {
+    pub fn all_moves(&self, pos: &Square) -> Vec<Move> { // calcula os movimentos potenciais de cada peça, a maior parte sao ilegais
+        let mut moves = vec![];
+
+        match self.color {
+            Color::Black => {
+                match self.piece {
+                    Piece::Pawn => {
+                                match pos.offset(0, -2) { //andar 2 para a frente
+                            Some(s) => moves.push(Move::from_squares(*pos, s)),
+                            None => {}
+                        };
+
+                        match pos.offset(0, -1) { //andar 1 para a frente
+                            Some(s) => {
+                                moves.push(Move::from_squares(*pos, s));
+                            },
+                            None => {}
+                        };
+                
+                        //comer na diagonal direita
+                        match pos.offset(1, -1) { // file offset of one means "b" if pos is in "a"
+                            Some(s) => moves.push(Move::from_squares(*pos, s)),
+                            None => {}
+                        };
+
+                        match pos.offset(-1, -1) { //comer na diagonal esquerda
+                            Some(s) => moves.push(Move::from_squares(*pos, s)),
+                            None => {}
+                        };
+                    }
+                    _ => println!("faltam calcular moves de outras peças"),
+                }
+            },
+
+            Color::White => {
+                match self.piece {
+                    Piece::Pawn => {
+                                match pos.offset(0, 2) { //andar 2 para a frente
+                            Some(s) => moves.push(Move::from_squares(*pos, s)),
+                            None => {}
+                        };
+
+                        match pos.offset(0, 1) { //andar 1 para a frente
+                            Some(s) => {
+                                moves.push(Move::from_squares(*pos, s));
+                            },
+                            None => {}
+                        };
+                
+                        //comer na diagonal direita
+                        match pos.offset(1, 1) { // file offset of one means "b" if pos is in "a"
+                            Some(s) => moves.push(Move::from_squares(*pos, s)),
+                            None => {}
+                        };
+
+                        match pos.offset(-1, 1) { //comer na diagonal esquerda
+                            Some(s) => moves.push(Move::from_squares(*pos, s)),
+                            None => {}
+                        };
+                    }
+                    _ => println!("faltam calcular moves de outras peças"),
+                }
+            },
+        };
+
+        moves
+    }
+
+    pub fn color(&self) -> Color {
+        self.color
+    }
 }
-
-
-
-pub enum Piece {
-    King(Color),
-    Pawn(Color),
-    Knight(Color),
-    Bishop(Color),
-    Rook(Color),
-    Queen(Color),
-    Empty,
-}
-
-pub enum Color {
-    Black,
-    White,
-}
-*/

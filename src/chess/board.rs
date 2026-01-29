@@ -1,7 +1,14 @@
-use crate::chess::game::Color;
-use crate::chess::move_square::{Move, Square};
-use crate::chess::piece::{ChessPiece as CP, ChessPiece, Piece as P};
+use std::cmp::max;
 
+use crate::chess::game::Color;
+use Color as C;
+use crate::chess::move_square::{Move, Square};
+use crate::chess::piece::{self, ChessPiece as CP, ChessPiece, Piece as P};
+
+
+//file = collumn
+//rank = row
+#[derive(Debug)]
 pub struct Board {
     fen: String,
     pieces: [[Option<ChessPiece>; 8]; 8],
@@ -16,48 +23,144 @@ impl Board {
             fen: initial_pos,
             pieces: [
                 [
-                    Some(CP::Black(P::Rook)),
-                    Some(CP::Black(P::Knight)),
-                    Some(CP::Black(P::Bishop)),
-                    Some(CP::Black(P::Queen)),
-                    Some(CP::Black(P::King)),
-                    Some(CP::Black(P::Bishop)),
-                    Some(CP::Black(P::Knight)),
-                    Some(CP::Black(P::Rook)),
+                    Some(ChessPiece {
+                        color: C::White,
+                        piece: P::Rook,
+                    }),
+                    Some(ChessPiece {
+                        color: C::White,
+                        piece: P::Knight,
+                    }),
+                    Some(ChessPiece {
+                        color: C::White,
+                        piece: P::Bishop,
+                    }),
+                    Some(ChessPiece {
+                        color: C::White,
+                        piece: P::Queen,
+                    }),
+                    Some(ChessPiece {
+                        color: C::White,
+                        piece: P::King,
+                    }),
+                    Some(ChessPiece {
+                        color: C::White,
+                        piece: P::Bishop,
+                    }),
+                    Some(ChessPiece {
+                        color: C::White,
+                        piece: P::Knight,
+                    }),
+                    Some(ChessPiece {
+                        color: C::White,
+                        piece: P::Rook,
+                    }),
                 ],
                 [
-                    Some(CP::Black(P::Pawn)),
-                    Some(CP::Black(P::Pawn)),
-                    Some(CP::Black(P::Pawn)),
-                    Some(CP::Black(P::Pawn)),
-                    Some(CP::Black(P::Pawn)),
-                    Some(CP::Black(P::Pawn)),
-                    Some(CP::Black(P::Pawn)),
-                    Some(CP::Black(P::Pawn)),
+                    Some(ChessPiece {
+                        color: C::White,
+                        piece: P::Pawn,
+                    }),
+                    Some(ChessPiece {
+                        color: C::White,
+                        piece: P::Pawn,
+                    }),
+                    Some(ChessPiece {
+                        color: C::White,
+                        piece: P::Pawn,
+                    }),
+                    Some(ChessPiece {
+                        color: C::White,
+                        piece: P::Pawn,
+                    }),
+                    Some(ChessPiece {
+                        color: C::White,
+                        piece: P::Pawn,
+                    }),
+                    Some(ChessPiece {
+                        color: C::White,
+                        piece: P::Pawn,
+                    }),
+                    Some(ChessPiece {
+                        color: C::White,
+                        piece: P::Pawn,
+                    }),
+                    Some(ChessPiece {
+                        color: C::White,
+                        piece: P::Pawn,
+                    }),
                 ],
                 [None, None, None, None, None, None, None, None],
                 [None, None, None, None, None, None, None, None],
                 [None, None, None, None, None, None, None, None],
                 [None, None, None, None, None, None, None, None],
                 [
-                    Some(CP::White(P::Pawn)),
-                    Some(CP::White(P::Pawn)),
-                    Some(CP::White(P::Pawn)),
-                    Some(CP::White(P::Pawn)),
-                    Some(CP::White(P::Pawn)),
-                    Some(CP::White(P::Pawn)),
-                    Some(CP::White(P::Pawn)),
-                    Some(CP::White(P::Pawn)),
+                    Some(ChessPiece {
+                        color: C::Black,
+                        piece: P::Pawn,
+                    }),
+                    Some(ChessPiece {
+                        color: C::Black,
+                        piece: P::Pawn,
+                    }),
+                    Some(ChessPiece {
+                        color: C::Black,
+                        piece: P::Pawn,
+                    }),
+                    Some(ChessPiece {
+                        color: C::Black,
+                        piece: P::Pawn,
+                    }),
+                    Some(ChessPiece {
+                        color: C::Black,
+                        piece: P::Pawn,
+                    }),
+                    Some(ChessPiece {
+                        color: C::Black,
+                        piece: P::Pawn,
+                    }),
+                    Some(ChessPiece {
+                        color: C::Black,
+                        piece: P::Pawn,
+                    }),
+                    Some(ChessPiece {
+                        color: C::Black,
+                        piece: P::Pawn,
+                    }),
                 ],
                 [
-                    Some(CP::White(P::Rook)),
-                    Some(CP::White(P::Knight)),
-                    Some(CP::White(P::Bishop)),
-                    Some(CP::White(P::Queen)),
-                    Some(CP::White(P::King)),
-                    Some(CP::White(P::Bishop)),
-                    Some(CP::White(P::Knight)),
-                    Some(CP::White(P::Rook)),
+                    Some(ChessPiece {
+                        color: C::Black,
+                        piece: P::Rook,
+                    }),
+                    Some(ChessPiece {
+                        color: C::Black,
+                        piece: P::Knight,
+                    }),
+                    Some(ChessPiece {
+                        color: C::Black,
+                        piece: P::Bishop,
+                    }),
+                    Some(ChessPiece {
+                        color: C::Black,
+                        piece: P::Queen,
+                    }),
+                    Some(ChessPiece {
+                        color: C::White,
+                        piece: P::King,
+                    }),
+                    Some(ChessPiece {
+                        color: C::Black,
+                        piece: P::Bishop,
+                    }),
+                    Some(ChessPiece {
+                        color: C::Black,
+                        piece: P::Knight,
+                    }),
+                    Some(ChessPiece {
+                        color: C::Black,
+                        piece: P::Rook,
+                    }),
                 ],
             ],
         }
@@ -67,21 +170,116 @@ impl Board {
         &self.fen
     }
 
-    pub fn set_current_player_in_fen(&mut self, active_player: Color) {
+    pub fn set_current_player_in_fen(&mut self, active_player: &Color) {
         let mut substrings: Vec<&str> = self.fen.split(" ").collect();
         if substrings.len() > 1 {
             match active_player {
-                Color::White => substrings[1] = "b",
-                Color::Black => substrings[1] = "w",
+                &Color::White => substrings[1] = "b",
+                &Color::Black => substrings[1] = "w",
             }
         }
     }
 
-    pub fn get_pieces(&self) -> &[[Option<ChessPiece>; 8]; 8] {
-        &self.pieces
+    pub fn get_pieces(&self) -> [[Option<ChessPiece>; 8]; 8] {
+        self.pieces.clone()
     }
 
-    pub fn is_move_valid(&self, m: Move) -> bool {
-        false
+    pub fn get_legal_moves(&self, moving_player: &Color) -> Vec<Move> {
+        let mut valid_moves = vec![];
+
+        for (i, row) in self.pieces.iter().enumerate() {
+            for (j, piece) in row.iter().enumerate() {
+                match piece {
+                    None => {
+                        // println!("o quadrado inicial não tem nenhuma peça para mexer");
+                    },
+                    Some(piece) => {
+                        if &piece.color() != moving_player {
+                            continue;
+                        } else {
+                            let file = num_to_file(j as u8); // j is the file index (0..7) -> (a..=h)
+                            let rank = (i as u8) + 1;        // i is the rank index (0..7 → 1..8)
+                        
+                            let pos = Square::new(file, rank).expect("should be a valid square but it is not");
+                        
+                            self.insert_valid_moves(piece, &pos, &mut valid_moves, moving_player); //
+                        }
+                    }
+                }
+            }
+        };
+
+        valid_moves
+    }
+
+    //inserts the valid moves for one piece
+    fn insert_valid_moves(&self, piece: &ChessPiece, pos: &Square, valid_moves: &mut Vec<Move>, color: &Color) {
+        let all_moves = piece.all_moves(pos); // all moves for the piece, including invalid ones
+        // dbg!(pos);
+        // dbg!(piece);
+        // dbg!(&all_moves);
+        for m in all_moves {
+            if self.is_move_valid(m, color) { // check if the piece move is valid within the board context
+                valid_moves.push(m);
+                // println!("b")
+            }
+        };
+    }
+
+    fn is_move_valid(&self, m: Move, color: &Color) -> bool {
+        // dbg!(m);
+        let moving_piece = self.get_piece_at_square(&m.get_starting_square()).expect("there should be a piece at this position in the board");
+
+        let final_square_piece=  self.get_piece_at_square(&m.get_final_square()); // should be none if there is no piece at the final square
+
+        match final_square_piece { // todo! this logic is not finished
+            None => true,
+            Some(piece) => {
+                let piece_color = piece.color;
+                if let piece_color = color {
+                    false
+                } else {
+                    true
+                }
+            },
+        }
+    }
+
+    pub fn update_square(&mut self, piece: Option<ChessPiece>, square: &Square) {
+        let col = file_to_num(square.file);
+        let row = square.rank as usize - 1;
+
+        // dbg!(self.pieces[row][col as usize]);
+        self.pieces[row][col as usize] = piece;
+        // dbg!(col);
+        // dbg!(col);
+        // dbg!(self.pieces[row][col as usize]);
+
+    }
+
+    pub fn get_piece_at_square(&self, square: &Square) -> Option<ChessPiece> {
+        let col = file_to_num(square.file);
+        // dbg!(square.file);
+        // dbg!(col);
+        let row = square.rank as usize - 1;
+        // dbg!(row);
+
+        self.pieces[row][col as usize]
+    }
+}
+
+fn file_to_num(c: char) -> u8 {
+    if ('a'..='h').contains(&c) {
+        c as u8 - b'a'          // 0..=7
+    } else {
+        panic!("invalid file");
+    }
+}
+
+fn num_to_file(n: u8) -> char {
+    if n < 8 {
+        (b'a' + n) as char     // 0..=7
+    } else {
+        panic!("invalid file index");
     }
 }
