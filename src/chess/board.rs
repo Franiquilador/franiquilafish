@@ -215,9 +215,9 @@ impl Board {
     //inserts the valid moves for one piece
     fn insert_valid_moves(&self, piece: &ChessPiece, pos: &Square, valid_moves: &mut Vec<Move>, color: &Color) {
         let all_moves = piece.all_moves(pos); // all moves for the piece, including invalid ones
-        // dbg!(pos);
-        // dbg!(piece);
-        // dbg!(&all_moves);
+        dbg!(pos);
+        dbg!(piece);
+        dbg!(&all_moves);
         for m in all_moves {
             if self.is_move_valid(m, color) { // check if the piece move is valid within the board context
                 valid_moves.push(m);
@@ -237,6 +237,7 @@ impl Board {
         dbg!(m);
         dbg!(moving_piece);
         dbg!(final_square_piece);
+        dbg!(color);
         println!("------------------------------------ outro move da mesma peça em principio");
 
         match final_square_piece { // todo! this logic is not finished
@@ -267,7 +268,7 @@ impl Board {
                         }
                     }
                     _ => {
-                        println!("falta a logica de peças mexerem-se com outras no");
+                        println!("falta a logica de peças mexerem-se com outras no caminho");
                         true
                     }
                 }
@@ -276,7 +277,7 @@ impl Board {
             Some(piece) => { // ha uma peça no quadrado final
                 let piece_color = piece.color;
                 let p = piece.piece;
-                if let piece_color = color { // essa peça é da mesma equipa
+                if piece_color == *color { // essa peça é da mesma equipa
                     false
                 } else { // é capturável/da outra equipa
                     match p {
