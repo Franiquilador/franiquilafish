@@ -120,13 +120,14 @@ fn process_new(game: &mut Game) {
 fn print_board(mut pieces: [[Option<ChessPiece>; 8]; 8], active_player: &Color) {
     println!("  +---+---+---+---+---+---+---+---+");
 
-    pieces.reverse();
+    let mut cloned_pieces = pieces.clone();
+    cloned_pieces.reverse();
 
     // for row in pieces.iter_mut() {
     //     row.reverse();
     // }
 
-    for (i, rank) in pieces.iter().enumerate() {
+    for (i, rank) in cloned_pieces.iter().enumerate() {
         print!("{} |", 8 - i);
         for piece in rank {
             match piece {
@@ -159,8 +160,10 @@ fn print_board(mut pieces: [[Option<ChessPiece>; 8]; 8], active_player: &Color) 
     println!("    a   b   c   d   e   f   g   h");
     
     println!();
+    println!("Capital letters are white");
     match active_player {
         Color::White => print!("White to play: "),
         Color::Black => print!("Black to play: "),
     }
+    
 }

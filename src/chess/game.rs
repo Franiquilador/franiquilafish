@@ -95,6 +95,7 @@ impl Game {
         }
     }
 
+    //  pre: self.is_legal(m)
     pub fn move_piece(&mut self, m: &Move) {
         
         let moving_piece = self.board.get_piece_at_square(&m.get_starting_square()); // none if the square is empty

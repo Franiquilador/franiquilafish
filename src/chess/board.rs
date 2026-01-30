@@ -198,7 +198,7 @@ impl Board {
                             continue;
                         } else {
                             let file = num_to_file(j as u8); // j is the file index (0..7) -> (a..=h)
-                            let rank = (i as u8) + 1;        // i is the rank index (0..7 → 1..8)
+                            let rank = (i as i32) + 1;        // i is the rank index (0..7 → 1..8)
                         
                             let pos = Square::new(file, rank).expect("should be a valid square but it is not");
                         
@@ -227,19 +227,77 @@ impl Board {
     }
 
     fn is_move_valid(&self, m: Move, color: &Color) -> bool {
-        // dbg!(m);
-        let moving_piece = self.get_piece_at_square(&m.get_starting_square()).expect("there should be a piece at this position in the board");
+        let starting_square = &m.get_starting_square();
+        let final_square = &m.get_final_square();
 
-        let final_square_piece=  self.get_piece_at_square(&m.get_final_square()); // should be none if there is no piece at the final square
+        let moving_piece = self.get_piece_at_square(starting_square).expect("there should be a piece at this position in the board");
+
+        let final_square_piece=  self.get_piece_at_square(final_square); // should be none if there is no piece at the final square
+        
+        dbg!(m);
+        dbg!(moving_piece);
+        dbg!(final_square_piece);
+        println!("------------------------------------ outro move da mesma peça em principio");
 
         match final_square_piece { // todo! this logic is not finished
-            None => true,
-            Some(piece) => {
+            None => {// nao há peça no quadrado final
+                match moving_piece.piece {
+                    P::Pawn => {
+                        if starting_square.file != final_square.file {// nao pode andar na diagonal, apenas capturar
+                            false
+                        } else {
+                            match moving_piece.color {
+                                Color::Black => {
+                                    if ((starting_square.rank - final_square.rank).abs() >= 2)
+                                        && (starting_square.rank != 7) {
+                                        false
+                                    } else {
+                                        true
+                                    }
+                                },
+                                Color::White => {
+                                    if ((starting_square.rank - final_square.rank).abs() >= 2)
+                                        && (starting_square.rank != 2) {
+                                        false
+                                    } else {
+                                        true
+                                    }
+                                },
+                            }
+                        }
+                    }
+                    _ => {
+                        println!("falta a logica de peças mexerem-se com outras no");
+                        true
+                    }
+                }
+            },
+
+            Some(piece) => { // ha uma peça no quadrado final
                 let piece_color = piece.color;
-                if let piece_color = color {
+                let p = piece.piece;
+                if let piece_color = color { // essa peça é da mesma equipa
                     false
-                } else {
-                    true
+                } else { // é capturável/da outra equipa
+                    match p {
+                        P::King => {
+                            println!("falta a logica de cheque do rei");
+                            true
+                        },
+                        _ => match moving_piece.piece {
+                                P::Pawn => {
+                                    if starting_square.file != final_square.file {
+                                        true
+                                    } else {
+                                        false
+                                    }
+                                },
+                                _ => {
+                                    println!("falta a logica de peças capturarem-se");
+                                    true
+                                }
+                            }
+                    }
                 }
             },
         }

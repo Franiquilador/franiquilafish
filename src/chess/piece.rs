@@ -25,7 +25,7 @@ impl ChessPiece {
             Color::Black => {
                 match self.piece {
                     Piece::Pawn => {
-                                match pos.offset(0, -2) { //andar 2 para a frente
+                        match pos.offset(0, -2) { //andar 2 para a frente
                             Some(s) => moves.push(Move::from_squares(*pos, s)),
                             None => {}
                         };
@@ -55,7 +55,7 @@ impl ChessPiece {
             Color::White => {
                 match self.piece {
                     Piece::Pawn => {
-                                match pos.offset(0, 2) { //andar 2 para a frente
+                        match pos.offset(0, 2) { //andar 2 para a frente
                             Some(s) => moves.push(Move::from_squares(*pos, s)),
                             None => {}
                         };
