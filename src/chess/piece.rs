@@ -21,10 +21,10 @@ impl ChessPiece {
     pub fn all_moves(&self, pos: &Square) -> Vec<Move> { // calcula os movimentos potenciais de cada peça, a maior parte sao ilegais
         let mut moves = vec![];
 
-        match self.color {
-            Color::Black => {
-                match self.piece {
-                    Piece::Pawn => {
+        match self.piece {
+            Piece::Pawn => {
+                match self.color {
+                    Color::Black => {
                         match pos.offset(0, -2) { //andar 2 para a frente
                             Some(s) => moves.push(Move::from_squares(*pos, s)),
                             None => {}
@@ -47,14 +47,9 @@ impl ChessPiece {
                             Some(s) => moves.push(Move::from_squares(*pos, s)),
                             None => {}
                         };
-                    }
-                    _ => println!("faltam calcular moves de outras peças"),
-                }
-            },
+                    },
 
-            Color::White => {
-                match self.piece {
-                    Piece::Pawn => {
+                    Color::White => {
                         match pos.offset(0, 2) { //andar 2 para a frente
                             Some(s) => moves.push(Move::from_squares(*pos, s)),
                             None => {}
@@ -77,10 +72,53 @@ impl ChessPiece {
                             Some(s) => moves.push(Move::from_squares(*pos, s)),
                             None => {}
                         };
-                    }
-                    _ => println!("faltam calcular moves de outras peças"),
+                    },
                 }
             },
+
+            Piece::Knight => {
+                match pos.offset(-1, 2) {
+                    Some(s) => moves.push(Move::from_squares(*pos, s)),
+                    None => {}
+                };
+
+                match pos.offset(1, 2) {
+                    Some(s) => moves.push(Move::from_squares(*pos, s)),
+                    None => {}
+                };
+
+                match pos.offset(2, 1) {
+                    Some(s) => moves.push(Move::from_squares(*pos, s)),
+                    None => {}
+                };
+
+                match pos.offset(2, -1) {
+                    Some(s) => moves.push(Move::from_squares(*pos, s)),
+                    None => {}
+                };
+
+                match pos.offset(1, -2) {
+                    Some(s) => moves.push(Move::from_squares(*pos, s)),
+                    None => {}
+                };
+
+                match pos.offset(-1, -2) {
+                    Some(s) => moves.push(Move::from_squares(*pos, s)),
+                    None => {}
+                };
+
+                match pos.offset(-2, -1) {
+                    Some(s) => moves.push(Move::from_squares(*pos, s)),
+                    None => {}
+                };
+
+                match pos.offset(-2, 1) {
+                    Some(s) => moves.push(Move::from_squares(*pos, s)),
+                    None => {}
+                };
+            }
+
+            _ => println!("faltam calcular moves de outras peças"),
         };
 
         moves

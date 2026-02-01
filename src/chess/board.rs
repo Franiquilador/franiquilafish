@@ -1,9 +1,8 @@
 use std::cmp::max;
 
 use crate::chess::game::Color;
-use Color as C;
 use crate::chess::move_square::{Move, Square};
-use crate::chess::piece::{self, ChessPiece as CP, ChessPiece, Piece as P};
+use crate::chess::piece::{self, ChessPiece as CP, ChessPiece, Piece};
 
 
 //file = collumn
@@ -24,142 +23,142 @@ impl Board {
             pieces: [
                 [
                     Some(ChessPiece {
-                        color: C::White,
-                        piece: P::Rook,
+                        color: Color::White,
+                        piece: Piece::Rook,
                     }),
                     Some(ChessPiece {
-                        color: C::White,
-                        piece: P::Knight,
+                        color: Color::White,
+                        piece: Piece::Knight,
                     }),
                     Some(ChessPiece {
-                        color: C::White,
-                        piece: P::Bishop,
+                        color: Color::White,
+                        piece: Piece::Bishop,
                     }),
                     Some(ChessPiece {
-                        color: C::White,
-                        piece: P::Queen,
+                        color: Color::White,
+                        piece: Piece::Queen,
                     }),
                     Some(ChessPiece {
-                        color: C::White,
-                        piece: P::King,
+                        color: Color::White,
+                        piece: Piece::King,
                     }),
                     Some(ChessPiece {
-                        color: C::White,
-                        piece: P::Bishop,
+                        color: Color::White,
+                        piece: Piece::Bishop,
                     }),
                     Some(ChessPiece {
-                        color: C::White,
-                        piece: P::Knight,
+                        color: Color::White,
+                        piece: Piece::Knight,
                     }),
                     Some(ChessPiece {
-                        color: C::White,
-                        piece: P::Rook,
-                    }),
-                ],
-                [
-                    Some(ChessPiece {
-                        color: C::White,
-                        piece: P::Pawn,
-                    }),
-                    Some(ChessPiece {
-                        color: C::White,
-                        piece: P::Pawn,
-                    }),
-                    Some(ChessPiece {
-                        color: C::White,
-                        piece: P::Pawn,
-                    }),
-                    Some(ChessPiece {
-                        color: C::White,
-                        piece: P::Pawn,
-                    }),
-                    Some(ChessPiece {
-                        color: C::White,
-                        piece: P::Pawn,
-                    }),
-                    Some(ChessPiece {
-                        color: C::White,
-                        piece: P::Pawn,
-                    }),
-                    Some(ChessPiece {
-                        color: C::White,
-                        piece: P::Pawn,
-                    }),
-                    Some(ChessPiece {
-                        color: C::White,
-                        piece: P::Pawn,
-                    }),
-                ],
-                [None, None, None, None, None, None, None, None],
-                [None, None, None, None, None, None, None, None],
-                [None, None, None, None, None, None, None, None],
-                [None, None, None, None, None, None, None, None],
-                [
-                    Some(ChessPiece {
-                        color: C::Black,
-                        piece: P::Pawn,
-                    }),
-                    Some(ChessPiece {
-                        color: C::Black,
-                        piece: P::Pawn,
-                    }),
-                    Some(ChessPiece {
-                        color: C::Black,
-                        piece: P::Pawn,
-                    }),
-                    Some(ChessPiece {
-                        color: C::Black,
-                        piece: P::Pawn,
-                    }),
-                    Some(ChessPiece {
-                        color: C::Black,
-                        piece: P::Pawn,
-                    }),
-                    Some(ChessPiece {
-                        color: C::Black,
-                        piece: P::Pawn,
-                    }),
-                    Some(ChessPiece {
-                        color: C::Black,
-                        piece: P::Pawn,
-                    }),
-                    Some(ChessPiece {
-                        color: C::Black,
-                        piece: P::Pawn,
+                        color: Color::White,
+                        piece: Piece::Rook,
                     }),
                 ],
                 [
                     Some(ChessPiece {
-                        color: C::Black,
-                        piece: P::Rook,
+                        color: Color::White,
+                        piece: Piece::Pawn,
                     }),
                     Some(ChessPiece {
-                        color: C::Black,
-                        piece: P::Knight,
+                        color: Color::White,
+                        piece: Piece::Pawn,
                     }),
                     Some(ChessPiece {
-                        color: C::Black,
-                        piece: P::Bishop,
+                        color: Color::White,
+                        piece: Piece::Pawn,
                     }),
                     Some(ChessPiece {
-                        color: C::Black,
-                        piece: P::Queen,
+                        color: Color::White,
+                        piece: Piece::Pawn,
                     }),
                     Some(ChessPiece {
-                        color: C::White,
-                        piece: P::King,
+                        color: Color::White,
+                        piece: Piece::Pawn,
                     }),
                     Some(ChessPiece {
-                        color: C::Black,
-                        piece: P::Bishop,
+                        color: Color::White,
+                        piece: Piece::Pawn,
                     }),
                     Some(ChessPiece {
-                        color: C::Black,
-                        piece: P::Knight,
+                        color: Color::White,
+                        piece: Piece::Pawn,
                     }),
                     Some(ChessPiece {
-                        color: C::Black,
-                        piece: P::Rook,
+                        color: Color::White,
+                        piece: Piece::Pawn,
+                    }),
+                ],
+                [None, None, None, None, None, None, None, None],
+                [None, None, None, None, None, None, None, None],
+                [None, None, None, None, None, None, None, None],
+                [None, None, None, None, None, None, None, None],
+                [
+                    Some(ChessPiece {
+                        color: Color::Black,
+                        piece: Piece::Pawn,
+                    }),
+                    Some(ChessPiece {
+                        color: Color::Black,
+                        piece: Piece::Pawn,
+                    }),
+                    Some(ChessPiece {
+                        color: Color::Black,
+                        piece: Piece::Pawn,
+                    }),
+                    Some(ChessPiece {
+                        color: Color::Black,
+                        piece: Piece::Pawn,
+                    }),
+                    Some(ChessPiece {
+                        color: Color::Black,
+                        piece: Piece::Pawn,
+                    }),
+                    Some(ChessPiece {
+                        color: Color::Black,
+                        piece: Piece::Pawn,
+                    }),
+                    Some(ChessPiece {
+                        color: Color::Black,
+                        piece: Piece::Pawn,
+                    }),
+                    Some(ChessPiece {
+                        color: Color::Black,
+                        piece: Piece::Pawn,
+                    }),
+                ],
+                [
+                    Some(ChessPiece {
+                        color: Color::Black,
+                        piece: Piece::Rook,
+                    }),
+                    Some(ChessPiece {
+                        color: Color::Black,
+                        piece: Piece::Knight,
+                    }),
+                    Some(ChessPiece {
+                        color: Color::Black,
+                        piece: Piece::Bishop,
+                    }),
+                    Some(ChessPiece {
+                        color: Color::Black,
+                        piece: Piece::Queen,
+                    }),
+                    Some(ChessPiece {
+                        color: Color::White,
+                        piece: Piece::King,
+                    }),
+                    Some(ChessPiece {
+                        color: Color::Black,
+                        piece: Piece::Bishop,
+                    }),
+                    Some(ChessPiece {
+                        color: Color::Black,
+                        piece: Piece::Knight,
+                    }),
+                    Some(ChessPiece {
+                        color: Color::Black,
+                        piece: Piece::Rook,
                     }),
                 ],
             ],
@@ -243,7 +242,7 @@ impl Board {
         match final_square_piece { // todo! this logic is not finished
             None => {// nao há peça no quadrado final
                 match moving_piece.piece {
-                    P::Pawn => {
+                    Piece::Pawn => {
                         if starting_square.file != final_square.file {// nao pode andar na diagonal, apenas capturar
                             false
                         } else {
@@ -267,6 +266,11 @@ impl Board {
                             }
                         }
                     }
+
+                    Piece::Knight => {
+                        // todo!("falta logica de pins e cheques no cavalo");
+                        true
+                    },
                     _ => {
                         println!("falta a logica de peças mexerem-se com outras no caminho");
                         true
@@ -276,23 +280,28 @@ impl Board {
 
             Some(piece) => { // ha uma peça no quadrado final
                 let piece_color = piece.color;
-                let p = piece.piece;
                 if piece_color == *color { // essa peça é da mesma equipa
                     false
                 } else { // é capturável/da outra equipa
-                    match p {
-                        P::King => {
+                    match piece.piece {
+                        Piece::King => {
                             println!("falta a logica de cheque do rei");
                             true
                         },
                         _ => match moving_piece.piece {
-                                P::Pawn => {
+                                Piece::Pawn => {
                                     if starting_square.file != final_square.file {
                                         true
                                     } else {
                                         false
                                     }
                                 },
+
+                                Piece::Knight => {
+                                    // todo!("falta logica de pins e cheques no cavalo");
+                                    true
+                                },
+
                                 _ => {
                                     println!("falta a logica de peças capturarem-se");
                                     true

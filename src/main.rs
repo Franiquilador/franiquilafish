@@ -34,7 +34,7 @@ impl Command {
 // time, serde
 fn main() {
     let mut game = Game::new();
-    println!("This is chess in the command line!");
+    println!("This is command line chess!");
     println!("Type '{HELP}' for commands");
 
     

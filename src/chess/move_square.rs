@@ -59,6 +59,7 @@ impl Square {
         }
     }
 
+    // returns None if the position is outside the board
     pub fn offset(&self, file_offset: i8, rank_offset: i32) -> Option<Square> {
         let new_file = (self.file as i8 + file_offset) as u8 as char;
         let new_rank = self.rank as i32 + rank_offset;
