@@ -59,10 +59,10 @@ impl UciCommand {
 // time, serde
 fn main() {
     let mut engine = Engine::new();
-    // println!("This is command line chess!");
-    // println!("Type '{HELP}' for commands");
+    /* 
+    println!("This is command line chess!");
+    println!("Type '{HELP}' for commands");
 
-    
     while engine.is_running() {
         let mut input = String::new();
         if !engine.has_started() {
@@ -94,7 +94,19 @@ fn main() {
             },
         }
     }
+    */
     
+    let mut input = String::new();
+
+    stdin().read_line(&mut input).unwrap();
+
+    let trimed = input.trim(); // to remove the '\n' in the end for processing it
+
+    match trimed {
+        "uci" => uci(&mut engine),
+        _ => println!("Unknown command, type {HELP} for help"),
+    }
+
 /*
     let mut a = [[1, 4], [2, 0]];
 
@@ -125,7 +137,7 @@ fn process_move(engine: &mut Engine, m: Move) {
 fn process_command(command: Command, engine: &mut Engine) {
     match command {
             Command::Help => process_help(),
-            Command::Uci => uci(),
+            Command::Uci => uci(engine),
             Command::Quit => engine.close(),
             Command::NewGame => process_new(engine),
             Command::Unknown(cmd) => {
@@ -134,7 +146,7 @@ fn process_command(command: Command, engine: &mut Engine) {
     }
 }
 
-fn uci() {
+fn uci(engine: &mut Engine) {
     id_outputs();
 
     // Shared stop flag (atomic = thread-safe, no locks needed)
