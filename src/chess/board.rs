@@ -1,6 +1,7 @@
 use std::cmp::max;
 
-use crate::chess::game::Color;
+// use crate::chess::game::Color;
+use crate::chess::engine::Color;
 use crate::chess::move_square::{Move, Square};
 use crate::chess::piece::{self, ChessPiece as CP, ChessPiece, Piece};
 
@@ -145,7 +146,7 @@ impl Board {
                         piece: Piece::Queen,
                     }),
                     Some(ChessPiece {
-                        color: Color::White,
+                        color: Color::Black,
                         piece: Piece::King,
                     }),
                     Some(ChessPiece {

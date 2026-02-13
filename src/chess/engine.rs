@@ -1,4 +1,3 @@
-/*
 use std::vec;
 
 use crate::chess::board;
@@ -19,7 +18,7 @@ pub enum GameState {
 }
 
 
-pub struct Game {
+pub struct Engine {
     is_running: bool,
     game_state: GameState,
     color_playing: Color,
@@ -27,9 +26,9 @@ pub struct Game {
     legal_moves: Vec<Move>,
 }
 
-impl Game {
+impl Engine {
     pub fn new() -> Self {
-        Game {
+        Engine {
             is_running: true,
             game_state: GameState::Created,
             color_playing: Color::White,
@@ -112,4 +111,3 @@ impl Game {
 
     }
 }
-    */

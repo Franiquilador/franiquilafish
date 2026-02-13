@@ -1,5 +1,6 @@
 use crate::chess::move_square::{Move, Square};
-use crate::chess::game::Color;
+// use crate::chess::game::Color;
+use crate::chess::engine::Color;
 
 #[derive(Copy, Clone, Debug)]
 pub enum Piece {
