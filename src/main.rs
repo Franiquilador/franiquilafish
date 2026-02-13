@@ -1,7 +1,9 @@
-use chess_cl::chess::{
+use diesel::chess::{
     engine::{Color, Engine, GameState}, move_square::Move, piece::{ChessPiece as CP, ChessPiece, Piece as P}, start_match
 };
-use std::io::{self, Write, stdin};
+use diesel::chess::engine::PlayerTimes;
+
+use std::{io::{self, Write, stdin}, sync::mpsc::{Receiver, Sender}};
 
 use std::thread;
 use std::sync::mpsc;
@@ -56,9 +58,11 @@ impl UciCommand {
     }
 }
 
+
+
 // time, serde
 fn main() {
-    let mut engine = Engine::new();
+    // let mut engine = Engine::new();
     /* 
     println!("This is command line chess!");
     println!("Type '{HELP}' for commands");
@@ -103,7 +107,7 @@ fn main() {
     let trimed = input.trim(); // to remove the '\n' in the end for processing it
 
     match trimed {
-        "uci" => uci(&mut engine),
+        "uci" => uci(),
         _ => println!("Unknown command, type {HELP} for help"),
     }
 
@@ -137,7 +141,7 @@ fn process_move(engine: &mut Engine, m: Move) {
 fn process_command(command: Command, engine: &mut Engine) {
     match command {
             Command::Help => process_help(),
-            Command::Uci => uci(engine),
+            Command::Uci => uci(),
             Command::Quit => engine.close(),
             Command::NewGame => process_new(engine),
             Command::Unknown(cmd) => {
@@ -146,40 +150,26 @@ fn process_command(command: Command, engine: &mut Engine) {
     }
 }
 
-fn uci(engine: &mut Engine) {
+fn uci() {
     id_outputs();
 
     // Shared stop flag (atomic = thread-safe, no locks needed)
-    let stop = Arc::new(AtomicBool::new(false));
+    let mut stop = Arc::new(AtomicBool::new(false));
+
+    let stop_clone = Arc::clone(&stop);
 
     let (producer, consumer) = mpsc::channel();
 
-    let stop_clone = stop.clone();
-
     //search thread, the main threads blocks waiting for GUI commands on the stdin
     // the search thrd ocasionally checks for msgs from main to see if the engine told it to stop the search
-    let search_thread = thread::spawn(move || { 
-        loop {
-            let cmd: String = consumer.recv().unwrap(); // blocks waiting for input from the GUI, received in the main thread
-            match cmd.as_str() {
-                "isready" => {
-                    println!("readyok"); // after initializing engine parameters chosed by the GUI
-                },
-                "ucinewgame" => {
-
-                },
-                "go" => {
-
-                },
-                _ => {
-                    println!("unknown uci command sent by the main thread");
-                },
-            }
-
-        }
-    
+    let search_thread = thread::spawn(move || {
+        search_thread(stop_clone, consumer);
     });
 
+    main_uci_thread(producer, stop);
+}
+
+fn main_uci_thread(producer: Sender<String>, stop: Arc<AtomicBool>) {
     println!("uciok"); // after initializing parameters;
 
     let mut cmd = String::new();
@@ -191,6 +181,11 @@ fn uci(engine: &mut Engine) {
     // let uci_cmd = UciCommand::from(cmd).expect("Uci command not supported by the engine");
 
     loop {
+        let mut cmd = String::new();
+
+        stdin().read_line(&mut cmd).unwrap(); //blocks waiting for a command from the GUI, or for a '\n' enter
+
+        let cmd = cmd.trim();
 
         match cmd {
             "isready" => {
@@ -199,16 +194,70 @@ fn uci(engine: &mut Engine) {
             "ucinewgame" => {
                 let _ = producer.send("ucinewgame".to_string());
             },
+            "stop" => { stop.store(true, std::sync::atomic::Ordering::Relaxed); },  //atomicbool operation guarantees the flag is updated by only one thread at a time, since the flag is shared between threads
             "quit" => break,
+            line => {
+                producer.send(line.to_string());
+            },
             _ => {
                 // println!("unknown uci command")
                 continue;
             },
         }
     }
-
-    let res = producer.send("uci".to_string());
 }
+
+fn search_thread(stop_clone: Arc<AtomicBool>, consumer: Receiver<String>) {
+    let mut engine = Engine::new();
+        loop {
+            let cmd: String = consumer.recv().unwrap(); // blocks waiting for input from the GUI, received in the main thread
+            
+            let mut moves: Vec<_> = vec![];
+            let mut times = PlayerTimes {
+                wtime: 0,
+                btime: 0,
+                winc: 0,
+                binc: 0,
+            };
+
+            match cmd.as_str() {
+                "isready" => {
+                    println!("readyok"); // after initializing engine parameters chosed by the GUI
+                },
+                "ucinewgame" => {
+                    engine.start();
+                },
+                line => {
+                    let parts: Vec<_> = line.split_whitespace().collect();
+                    match parts.first().unwrap() {
+                        &"position" => {
+                            moves = parts.iter()
+                                        .skip_while(|s| s != &&"moves")
+                                        .skip(1) // skip moves word itself
+                                        .copied()
+                                        .collect();
+                        },
+                        &"go" => {
+                            times = PlayerTimes {
+                                        wtime: parts[2].parse().unwrap(),
+                                        btime: parts[4].parse().unwrap(),
+                                        winc: parts[6].parse().unwrap(),
+                                        binc: parts[8].parse().unwrap(),
+                                    };
+                            let best_move = engine.search(moves, times, Arc::clone(&stop_clone));
+                            println!("bestmove {best_move}");
+                        },
+                        _ => { panic!("empty first string"); },
+                    }
+                },
+                _ => {
+                    // println!("unknown uci command sent by the main thread");
+                    continue;
+                },
+            }
+        }
+}
+
 
 fn id_outputs() {
     println!("id name Diesel");

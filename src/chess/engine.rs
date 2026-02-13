@@ -3,6 +3,7 @@ use std::vec;
 use crate::chess::board;
 use board::Board;
 use crate::chess::move_square::Move;
+use std::sync::{Arc, Mutex, atomic::AtomicBool};
 
 #[derive(PartialEq, Debug, Clone, Copy)]
 pub enum Color {
@@ -15,6 +16,13 @@ pub enum GameState {
     CheckMate(Color),
     StaleMate,
     Created, // new game created but not started
+}
+
+pub struct PlayerTimes {
+    pub wtime: i32,
+    pub btime: i32,
+    pub winc: i32,
+    pub binc: i32,
 }
 
 
@@ -109,5 +117,10 @@ impl Engine {
         self.update_active_player();
         // todo!();
 
+    }
+
+    pub fn search(&mut self, moves: Vec<&str>, times: PlayerTimes, stop_flag: Arc<AtomicBool>) -> String {
+
+        "b7b5".to_string()
     }
 }
