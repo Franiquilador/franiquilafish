@@ -131,6 +131,8 @@ impl Engine {
     }
 
     pub fn apply_moves(&mut self, moves: Vec<String>) {
+        self.board = Board::new();
+
         for move_before in &moves {
             let m = Move::from_uci(move_before).unwrap();
             self.move_piece(&m);

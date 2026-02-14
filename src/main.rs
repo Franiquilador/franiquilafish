@@ -226,6 +226,7 @@ fn search_thread(stop_clone: Arc<AtomicBool>, consumer: Receiver<String>) {
                 stdout().flush().unwrap();
             },
             "ucinewgame" => {
+                moves.clear();
                 engine.start();
             },
             line => {
