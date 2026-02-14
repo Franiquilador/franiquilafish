@@ -3,6 +3,7 @@ use diesel::chess::{
 };
 use diesel::chess::engine::PlayerTimes;
 
+use std::{io::stdout, os::windows};
 use std::{io::{self, Write, stdin}, sync::mpsc::{Receiver, Sender}};
 
 use std::thread;
@@ -108,9 +109,11 @@ fn main() {
 
     match trimed {
         "uci" => uci(),
-        _ => println!("Unknown command, type {HELP} for help"),
-    }
+        _ => {
+            // println!("Unknown command, type {HELP} for help"),
 
+        },
+    }
 /*
     let mut a = [[1, 4], [2, 0]];
 
@@ -145,8 +148,8 @@ fn process_command(command: Command, engine: &mut Engine) {
             Command::Quit => engine.close(),
             Command::NewGame => process_new(engine),
             Command::Unknown(cmd) => {
-                println!("Unknow command '{cmd}'. Type '{HELP}' for commands");
-            }
+                // println!("Unknow command '{cmd}'. Type '{HELP}' for commands");
+            },
     }
 }
 
@@ -171,12 +174,7 @@ fn uci() {
 
 fn main_uci_thread(producer: Sender<String>, stop: Arc<AtomicBool>) {
     println!("uciok"); // after initializing parameters;
-
-    let mut cmd = String::new();
-
-    stdin().read_line(&mut cmd).unwrap(); //blocks waiting for a command from the GUI, or for a '\n' enter
-
-    let cmd = cmd.trim();
+    stdout().flush().unwrap();
 
     // let uci_cmd = UciCommand::from(cmd).expect("Uci command not supported by the engine");
 
@@ -186,6 +184,10 @@ fn main_uci_thread(producer: Sender<String>, stop: Arc<AtomicBool>) {
         stdin().read_line(&mut cmd).unwrap(); //blocks waiting for a command from the GUI, or for a '\n' enter
 
         let cmd = cmd.trim();
+
+        if cmd.is_empty() {
+            continue;
+        }
 
         match cmd {
             "isready" => {
@@ -199,9 +201,9 @@ fn main_uci_thread(producer: Sender<String>, stop: Arc<AtomicBool>) {
             line => {
                 producer.send(line.to_string());
             },
-            _ => {
+            _ => { // unreachable, line catches everything 
                 // println!("unknown uci command")
-                continue;
+                producer.send(cmd.to_string()).unwrap();
             },
         }
     }
@@ -223,31 +225,60 @@ fn search_thread(stop_clone: Arc<AtomicBool>, consumer: Receiver<String>) {
             match cmd.as_str() {
                 "isready" => {
                     println!("readyok"); // after initializing engine parameters chosed by the GUI
+                    stdout().flush().unwrap();
                 },
                 "ucinewgame" => {
                     engine.start();
                 },
                 line => {
                     let parts: Vec<_> = line.split_whitespace().collect();
-                    match parts.first().unwrap() {
-                        &"position" => {
+
+                    if parts.is_empty() {
+                        continue;
+                    }
+
+                    let mut pairs = parts.windows(2);
+
+                    match parts[0] {
+                        "position" => {
                             moves = parts.iter()
                                         .skip_while(|s| s != &&"moves")
                                         .skip(1) // skip moves word itself
                                         .copied()
                                         .collect();
                         },
-                        &"go" => {
+                        "go" => {
+                            let wtime = pairs
+                            .find(|window| window[0] == "wtime")
+                            .and_then(|window| window[1].parse::<i32>().ok())
+                            .unwrap_or(0); // 0 if there is no wtime word, instead of panicking
+
+                            let btime = pairs
+                            .find(|window| window[0] == "btime")
+                            .and_then(|window| window[1].parse::<i32>().ok())
+                            .unwrap_or(0);
+
+                            let winc = pairs
+                            .find(|window| window[0] == "winc")
+                            .and_then(|window| window[1].parse::<i32>().ok())
+                            .unwrap_or(0);
+
+                            let binc = pairs
+                            .find(|window| window[0] == "binc")
+                            .and_then(|window| window[1].parse::<i32>().ok())
+                            .unwrap_or(0);
+
                             times = PlayerTimes {
-                                        wtime: parts[2].parse().unwrap(),
-                                        btime: parts[4].parse().unwrap(),
-                                        winc: parts[6].parse().unwrap(),
-                                        binc: parts[8].parse().unwrap(),
+                                        wtime: wtime,
+                                        btime: btime,
+                                        winc: winc,
+                                        binc: binc,
                                     };
                             let best_move = engine.search(moves, times, Arc::clone(&stop_clone));
                             println!("bestmove {best_move}");
+                            stdout().flush().unwrap();
                         },
-                        _ => { panic!("empty first string"); },
+                        _ => { /*panic!("empty first string");*/ }, //  unreachable
                     }
                 },
                 _ => {
@@ -261,7 +292,9 @@ fn search_thread(stop_clone: Arc<AtomicBool>, consumer: Receiver<String>) {
 
 fn id_outputs() {
     println!("id name Diesel");
+    stdout().flush().unwrap();
     println!("id name Francisco Figueiredo");
+    stdout().flush().unwrap();
 }
 
 fn process_help() {

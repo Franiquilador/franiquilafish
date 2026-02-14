@@ -18,7 +18,7 @@ pub enum GameState {
     Created, // new game created but not started
 }
 
-pub struct PlayerTimes {
+pub struct PlayerTimes { // in miliseconds
     pub wtime: i32,
     pub btime: i32,
     pub winc: i32,
@@ -121,6 +121,6 @@ impl Engine {
 
     pub fn search(&mut self, moves: Vec<&str>, times: PlayerTimes, stop_flag: Arc<AtomicBool>) -> String {
 
-        "b7b5".to_string()
+        "f7f6".to_string()
     }
 }
