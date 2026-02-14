@@ -19,6 +19,31 @@ pub struct ChessPiece {
 }
 
 impl ChessPiece {
+    pub fn value(&self) -> i32 {
+        match self.color {
+            Color::White => {
+                match self.piece {
+                    Piece::Rook => 5,
+                    Piece::Knight => 3,
+                    Piece::Bishop => 3,
+                    Piece::Queen => 3,
+                    Piece::King => 0,
+                    Piece::Pawn => 1,
+                }
+            },
+            Color::Black => {
+                match self.piece {
+                    Piece::Rook => -5,
+                    Piece::Knight => -3,
+                    Piece::Bishop => -3,
+                    Piece::Queen => -3,
+                    Piece::King => 0,
+                    Piece::Pawn => -1,
+                }
+            },
+        }
+    }
+
     pub fn all_moves(&self, pos: &Square) -> Vec<Move> { // calcula os movimentos potenciais de cada peça, a maior parte sao ilegais
         let mut moves = vec![];
 
@@ -119,7 +144,9 @@ impl ChessPiece {
                 };
             }
 
-            _ => println!("faltam calcular moves de outras peças"),
+            _ => { 
+                // println!("faltam calcular moves de outras peças")
+            },
         };
 
         moves

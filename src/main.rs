@@ -36,7 +36,7 @@ impl Command {
     }
 
     fn get_move_from_uci(input: &str) -> Option<Move> {
-        Move::from_uci_coords(input)
+        Move::from_uci(input)
     }
 }
 
@@ -201,89 +201,106 @@ fn main_uci_thread(producer: Sender<String>, stop: Arc<AtomicBool>) {
             line => {
                 producer.send(line.to_string());
             },
-            _ => { // unreachable, line catches everything 
-                // println!("unknown uci command")
-                producer.send(cmd.to_string()).unwrap();
-            },
         }
     }
 }
 
 fn search_thread(stop_clone: Arc<AtomicBool>, consumer: Receiver<String>) {
     let mut engine = Engine::new();
-        loop {
-            let cmd: String = consumer.recv().unwrap(); // blocks waiting for input from the GUI, received in the main thread
+
+    let mut moves: Vec<String> = vec![];
+        
+    loop {
+        let cmd: String = consumer.recv().unwrap(); // blocks waiting for input from the GUI, received in the main thread
             
-            let mut moves: Vec<_> = vec![];
-            let mut times = PlayerTimes {
-                wtime: 0,
-                btime: 0,
-                winc: 0,
-                binc: 0,
-            };
+        let mut times = PlayerTimes {
+            wtime: 0,
+            btime: 0,
+            winc: 0,
+            binc: 0,
+        };
 
-            match cmd.as_str() {
-                "isready" => {
-                    println!("readyok"); // after initializing engine parameters chosed by the GUI
-                    stdout().flush().unwrap();
-                },
-                "ucinewgame" => {
-                    engine.start();
-                },
-                line => {
-                    let parts: Vec<_> = line.split_whitespace().collect();
+        match cmd.as_str() {
+            "isready" => {
+                println!("readyok"); // after initializing engine parameters chosed by the GUI
+                stdout().flush().unwrap();
+            },
+            "ucinewgame" => {
+                engine.start();
+            },
+            line => {
+                let parts: Vec<_> = line.split_whitespace().collect();
 
-                    if parts.is_empty() {
-                        continue;
-                    }
+                if parts.is_empty() {
+                    continue;
+                }
 
-                    let mut pairs = parts.windows(2);
+                let mut pairs = parts.windows(2);
+                
+                match parts[0] {
+                    "position" => {
+                        moves = parts.iter()
+                            .skip_while(|s| s != &&"moves")
+                            .skip(1) // skip moves word itself
+                            .map(|s| s.to_string())
+                            .collect();
 
-                    match parts[0] {
-                        "position" => {
-                            moves = parts.iter()
-                                        .skip_while(|s| s != &&"moves")
-                                        .skip(1) // skip moves word itself
-                                        .copied()
-                                        .collect();
-                        },
-                        "go" => {
-                            let wtime = pairs
-                            .find(|window| window[0] == "wtime")
-                            .and_then(|window| window[1].parse::<i32>().ok())
-                            .unwrap_or(0); // 0 if there is no wtime word, instead of panicking
+                        // println!("stored moves {:?}", moves);
+                        // stdout().flush().unwrap();
 
-                            let btime = pairs
-                            .find(|window| window[0] == "btime")
-                            .and_then(|window| window[1].parse::<i32>().ok())
-                            .unwrap_or(0);
+                        engine.apply_moves(moves.clone());
+                    },
+                    "go" => {
+                        let wtime = pairs
+                        .find(|window| window[0] == "wtime")
+                        .and_then(|window| window[1].parse::<i32>().ok())
+                        .unwrap_or(0); // 0 if there is no wtime word, instead of panicking
 
-                            let winc = pairs
-                            .find(|window| window[0] == "winc")
-                            .and_then(|window| window[1].parse::<i32>().ok())
-                            .unwrap_or(0);
+                        let btime = pairs
+                        .find(|window| window[0] == "btime")
+                        .and_then(|window| window[1].parse::<i32>().ok())
+                        .unwrap_or(0);
 
-                            let binc = pairs
-                            .find(|window| window[0] == "binc")
-                            .and_then(|window| window[1].parse::<i32>().ok())
-                            .unwrap_or(0);
+                        let winc = pairs
+                        .find(|window| window[0] == "winc")
+                        .and_then(|window| window[1].parse::<i32>().ok())
+                        .unwrap_or(0);
 
-                            times = PlayerTimes {
-                                        wtime: wtime,
-                                        btime: btime,
-                                        winc: winc,
-                                        binc: binc,
-                                    };
-                            let best_move = engine.search(moves, times, Arc::clone(&stop_clone));
-                            println!("bestmove {best_move}");
-                            stdout().flush().unwrap();
+                        let binc = pairs
+                        .find(|window| window[0] == "binc")
+                        .and_then(|window| window[1].parse::<i32>().ok())
+                        .unwrap_or(0);
+
+                        times = PlayerTimes {
+                                    wtime: wtime,
+                                    btime: btime,
+                                    winc: winc,
+                                    binc: binc,
+                                };
+
+                        let color = match moves.len() % 2 == 0 { // engine color
+                            true => Color::White,
+                            false => Color::Black,
+                        };
+                        // println!("{:?}", moves);
+                        // stdout().flush().unwrap();
+
+                        // println!("{:?}", color);
+                        // stdout().flush().unwrap();
+
+                        engine.set_color(color);
+                        
+                        
+                        // println!("das");
+                        // stdout().flush().unwrap();
+
+                        let best_move = engine.search(moves.clone(), times, Arc::clone(&stop_clone));
+                            
+                        println!("bestmove {best_move}");
+                        stdout().flush().unwrap();
                         },
                         _ => { /*panic!("empty first string");*/ }, //  unreachable
                     }
-                },
-                _ => {
-                    // println!("unknown uci command sent by the main thread");
-                    continue;
                 },
             }
         }

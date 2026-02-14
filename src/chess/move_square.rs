@@ -13,7 +13,7 @@ pub struct Square {
 
 
 impl Move {
-    pub fn from_uci_coords(coords: &str) -> Option<Self> {
+    pub fn from_uci(coords: &str) -> Option<Self> {
         let starting = Square::from_str(&coords[0..2])?;
         let ending = Square::from_str(&coords[2..4])?;
 
@@ -31,8 +31,12 @@ impl Move {
         self.initial
     }
 
-    pub fn get_final_square(&self) -> Square {
+    pub fn final_square(&self) -> Square {
         self.end   
+    }
+
+    pub fn to_uci(&self) -> String {
+        format!("{}{}", self.initial.to_uci(), self.final_square().to_uci())
     }
 }
 
@@ -65,5 +69,9 @@ impl Square {
         let new_rank = self.rank as i32 + rank_offset;
 
         Square::new(new_file, new_rank as i32)
+    }
+
+    fn to_uci(&self) -> String {
+        format!("{}{}", self.file, self.rank)
     }
 }

@@ -8,7 +8,7 @@ use crate::chess::piece::{self, ChessPiece as CP, ChessPiece, Piece};
 
 //file = collumn
 //rank = row
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Board {
     fen: String,
     pieces: [[Option<ChessPiece>; 8]; 8],
@@ -215,9 +215,9 @@ impl Board {
     //inserts the valid moves for one piece
     fn insert_valid_moves(&self, piece: &ChessPiece, pos: &Square, valid_moves: &mut Vec<Move>, color: &Color) {
         let all_moves = piece.all_moves(pos); // all moves for the piece, including invalid ones
-        dbg!(pos);
-        dbg!(piece);
-        dbg!(&all_moves);
+        // dbg!(pos);
+        // dbg!(piece);
+        // dbg!(&all_moves);
         for m in all_moves {
             if self.is_move_valid(m, color) { // check if the piece move is valid within the board context
                 valid_moves.push(m);
@@ -228,17 +228,17 @@ impl Board {
 
     fn is_move_valid(&self, m: Move, color: &Color) -> bool {
         let starting_square = &m.get_starting_square();
-        let final_square = &m.get_final_square();
+        let final_square = &m.final_square();
 
         let moving_piece = self.get_piece_at_square(starting_square).expect("there should be a piece at this position in the board");
 
         let final_square_piece=  self.get_piece_at_square(final_square); // should be none if there is no piece at the final square
         
-        dbg!(m);
-        dbg!(moving_piece);
-        dbg!(final_square_piece);
-        dbg!(color);
-        println!("------------------------------------ outro move da mesma peça em principio");
+        // dbg!(m);
+        // dbg!(moving_piece);
+        // dbg!(final_square_piece);
+        // dbg!(color);
+        // println!("------------------------------------ outro move da mesma peça em principio");
 
         match final_square_piece { // todo! this logic is not finished
             None => {// nao há peça no quadrado final
