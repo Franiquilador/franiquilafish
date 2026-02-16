@@ -95,8 +95,8 @@ impl Engine {
         // dbg!(&self.color_playing);
         self.legal_moves = self.board.get_legal_moves(&self.color_playing);
 
-        dbg!(&self.legal_moves);
-        println!("num of legal moves: {}", self.legal_moves.len());
+        
+        // println!("num of legal moves: {}", self.legal_moves.len());
         // dbg!(m);
 
         if self.legal_moves.contains(m) {
@@ -140,6 +140,8 @@ impl Engine {
     }
 
     pub fn search(&mut self, moves: Vec<String>, times: PlayerTimes, stop_flag: Arc<AtomicBool>) -> String {
+        // self.apply_moves(moves);
+
         let legal_moves = self.board.get_legal_moves(&self.color);
 
         // println!("das1");
@@ -156,15 +158,15 @@ impl Engine {
         if !legal_moves.is_empty() {
             best_move = legal_moves[0].to_uci();
         } else {
-            println!("PANICCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC");
+            println!("PANICCCCCCCCCCCCCCCCCCC, draw? no legal moves that the engine knows");
             stdout().flush().unwrap();
             // panic!("no legal moves, maybe draw?");
         }
         // println!("das4");
         // stdout().flush().unwrap();
 
-        println!("{:?}", legal_moves.clone());
-        stdout().flush().unwrap();
+        // println!("{:?}", legal_moves.clone());
+        // stdout().flush().unwrap();
 
         // println!("das2");
         // stdout().flush().unwrap();
@@ -188,8 +190,8 @@ impl Engine {
             }
         }
 
-        // println!("das3");
-        // stdout().flush().unwrap();
+        println!("das3");
+        stdout().flush().unwrap();
 
         // "f7f6".to_string()
         best_move
@@ -199,7 +201,7 @@ impl Engine {
         // println!("das6");
         // stdout().flush().unwrap();
         let mut eval = 0;
-        for row in self.board.get_pieces() {
+        for row in board.get_pieces() {
             for p in row {
                 let is_white = true;
                 match p {

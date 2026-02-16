@@ -2,7 +2,7 @@ use crate::chess::move_square::{Move, Square};
 // use crate::chess::game::Color;
 use crate::chess::engine::Color;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Piece {
     King,
     Pawn,
@@ -12,7 +12,7 @@ pub enum Piece {
     Queen,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct ChessPiece {
     pub color: Color,
     pub piece: Piece,
@@ -142,6 +142,30 @@ impl ChessPiece {
                     Some(s) => moves.push(Move::from_squares(*pos, s)),
                     None => {}
                 };
+            }
+
+            Piece::Bishop => {
+                for i in 1..8 {
+                    match pos.offset(i, i.into()) {
+                        Some(s) => moves.push(Move::from_squares(*pos, s)),
+                        None => {}
+                    };
+
+                    match pos.offset(i, (-i).into()) {
+                        Some(s) => moves.push(Move::from_squares(*pos, s)),
+                        None => {}
+                    };
+
+                    match pos.offset(-i, (-i).into()) {
+                        Some(s) => moves.push(Move::from_squares(*pos, s)),
+                        None => {}
+                    };
+
+                    match pos.offset(-i, i.into()) {
+                        Some(s) => moves.push(Move::from_squares(*pos, s)),
+                        None => {}
+                    };
+                }
             }
 
             _ => { 

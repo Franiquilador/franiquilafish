@@ -1,4 +1,5 @@
 use std::cmp::max;
+use std::io::{stdout, Write};
 
 // use crate::chess::game::Color;
 use crate::chess::engine::Color;
@@ -188,6 +189,7 @@ impl Board {
         let mut valid_moves = vec![];
 
         for (i, row) in self.pieces.iter().enumerate() {
+            
             for (j, piece) in row.iter().enumerate() {
                 match piece {
                     None => {
@@ -208,16 +210,13 @@ impl Board {
                 }
             }
         };
-
         valid_moves
     }
 
     //inserts the valid moves for one piece
     fn insert_valid_moves(&self, piece: &ChessPiece, pos: &Square, valid_moves: &mut Vec<Move>, color: &Color) {
-        let all_moves = piece.all_moves(pos); // all moves for the piece, including invalid ones
-        // dbg!(pos);
-        // dbg!(piece);
-        // dbg!(&all_moves);
+        let all_moves = piece.all_moves(pos); // all moves for the piece, including invalid ones   
+        
         for m in all_moves {
             if self.is_move_valid(m, color) { // check if the piece move is valid within the board context
                 valid_moves.push(m);
@@ -233,12 +232,47 @@ impl Board {
         let moving_piece = self.get_piece_at_square(starting_square).expect("there should be a piece at this position in the board");
 
         let final_square_piece=  self.get_piece_at_square(final_square); // should be none if there is no piece at the final square
-        
-        // dbg!(m);
-        // dbg!(moving_piece);
-        // dbg!(final_square_piece);
-        // dbg!(color);
-        // println!("------------------------------------ outro move da mesma peça em principio");
+
+        if moving_piece.piece == Piece::Bishop {
+            let rank_dif = starting_square.rank - final_square.rank;
+            let file_dif = (starting_square.file as i8) - (final_square.file as i8);
+
+            let steps = rank_dif.abs();
+            if steps != <i8 as Into<i32>>::into(file_dif).abs() {
+                return false;  // Not a diagonal move!
+            }
+
+            // One square moves are always valid (no pieces in between)
+            if steps == 1 {
+                return true;
+            }
+
+            let rank_step = if rank_dif > 0 {
+                -1
+            } else {
+                1
+            };
+
+            let file_step = if file_dif > 0 {
+                -1
+            } else {
+                1
+            };
+
+            for i in 1..steps {
+                let new_rank = starting_square.rank + (rank_step * i);
+                let new_file = ((starting_square.file as i8) + ((file_step as i8) * (i as i8))) as u8 as char;
+
+                match Square::new(new_file, new_rank) {
+                    None => return false,
+                    Some(s) => if self.get_piece_at_square(&s) != None {
+                        return false;
+                    }
+                }
+            }
+
+            return true
+        }
 
         match final_square_piece { // todo! this logic is not finished
             None => {// nao há peça no quadrado final
@@ -253,7 +287,11 @@ impl Board {
                                         && (starting_square.rank != 7) {
                                         false
                                     } else {
-                                        true
+                                        if (/*starting_square.rank == 7 &&*/ self.get_piece_at_square(&Square { rank: starting_square.rank - 1, file: starting_square.file }) != None) {
+                                            false
+                                        } else {
+                                            true    
+                                        }
                                     }
                                 },
                                 Color::White => {
@@ -261,7 +299,11 @@ impl Board {
                                         && (starting_square.rank != 2) {
                                         false
                                     } else {
-                                        true
+                                        if (/*starting_square.rank == 2 &&*/ self.get_piece_at_square(&Square { rank: starting_square.rank + 1, file: starting_square.file }) != None) {
+                                            false
+                                        } else {
+                                            true
+                                        }
                                     }
                                 },
                             }
@@ -269,11 +311,11 @@ impl Board {
                     }
 
                     Piece::Knight => {
-                        // todo!("falta logica de pins e cheques no cavalo");
+                        // todo!("falta logica de pins cheques, e peças no caminho quando nao é o cavalo a mexer");
                         true
                     },
                     _ => {
-                        println!("falta a logica de peças mexerem-se com outras no caminho");
+                        // println!("falta a logica de peças mexerem-se com outras no caminho");
                         true
                     }
                 }
@@ -286,8 +328,8 @@ impl Board {
                 } else { // é capturável/da outra equipa
                     match piece.piece {
                         Piece::King => {
-                            println!("falta a logica de cheque do rei");
-                            true
+                            // println!("falta a logica de cheque do rei");
+                            false
                         },
                         _ => match moving_piece.piece {
                                 Piece::Pawn => {
@@ -299,12 +341,12 @@ impl Board {
                                 },
 
                                 Piece::Knight => {
-                                    // todo!("falta logica de pins e cheques no cavalo");
+                                    // todo!("falta logica de pins cheques, e peças no caminho quando nao é o cavalo a mexer");
                                     true
                                 },
 
                                 _ => {
-                                    println!("falta a logica de peças capturarem-se");
+                                    // println!("falta a logica de peças capturarem-se");
                                     true
                                 }
                             }
@@ -318,20 +360,13 @@ impl Board {
         let col = file_to_num(square.file);
         let row = square.rank as usize - 1;
 
-        // dbg!(self.pieces[row][col as usize]);
         self.pieces[row][col as usize] = piece;
-        // dbg!(col);
-        // dbg!(col);
-        // dbg!(self.pieces[row][col as usize]);
-
     }
 
     pub fn get_piece_at_square(&self, square: &Square) -> Option<ChessPiece> {
         let col = file_to_num(square.file);
-        // dbg!(square.file);
-        // dbg!(col);
+
         let row = square.rank as usize - 1;
-        // dbg!(row);
 
         self.pieces[row][col as usize]
     }

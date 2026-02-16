@@ -156,6 +156,9 @@ fn process_command(command: Command, engine: &mut Engine) {
 fn uci() {
     id_outputs();
 
+    println!("uciok"); // after initializing parameters;
+    stdout().flush().unwrap();
+
     // Shared stop flag (atomic = thread-safe, no locks needed)
     let mut stop = Arc::new(AtomicBool::new(false));
 
@@ -173,9 +176,6 @@ fn uci() {
 }
 
 fn main_uci_thread(producer: Sender<String>, stop: Arc<AtomicBool>) {
-    println!("uciok"); // after initializing parameters;
-    stdout().flush().unwrap();
-
     // let uci_cmd = UciCommand::from(cmd).expect("Uci command not supported by the engine");
 
     loop {
@@ -292,12 +292,12 @@ fn search_thread(stop_clone: Arc<AtomicBool>, consumer: Receiver<String>) {
                         engine.set_color(color);
                         
                         
-                        // println!("das");
-                        // stdout().flush().unwrap();
+                        println!("das");
+                        stdout().flush().unwrap();
 
                         let best_move = engine.search(moves.clone(), times, Arc::clone(&stop_clone));
                             
-                        println!("bestmove {best_move}");
+                        print!("bestmove {best_move}\n");
                         stdout().flush().unwrap();
                         },
                         _ => { /*panic!("empty first string");*/ }, //  unreachable
@@ -311,7 +311,7 @@ fn search_thread(stop_clone: Arc<AtomicBool>, consumer: Receiver<String>) {
 fn id_outputs() {
     println!("id name Diesel");
     stdout().flush().unwrap();
-    println!("id name Francisco Figueiredo");
+    println!("id author Francisco Figueiredo");
     stdout().flush().unwrap();
 }
 
