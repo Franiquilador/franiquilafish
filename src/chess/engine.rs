@@ -2,6 +2,7 @@ use std::{fmt::DebugStruct, i32, mem::transmute, vec};
 use std::io::{stdout, Write};
 
 use crate::chess::board;
+use crate::chess::piece::Piece;
 use board::Board;
 use crate::chess::move_square::Move;
 use std::sync::{Arc, Mutex, atomic::AtomicBool};
@@ -136,13 +137,45 @@ impl Engine {
         for move_before in &moves {
             let m = Move::from_uci(move_before).unwrap();
             self.move_piece(&m);
-        } 
+        }
+    }
+
+    fn remove_checks(&mut self, legal_moves: &mut Vec<Move>) { // removes moves that make the engines king remain in check
+        // let mut board_clone = self.board.clone(); // faz um clone, mexe na board, e pede os legal moves do outro depois de mexer na board
+
+        for m in legal_moves.clone() { // for each of the engine legal moves, check if it does not leave the engines king in check
+            let mut board_clone = self.board.clone();
+            self.simulate_move(&m, &mut board_clone);
+
+            let other_player = if self.color == Color::Black { Color::White } else { Color::White };
+            let other_player_legal_moves = board_clone.get_legal_moves(&other_player);
+            
+            for other_m in other_player_legal_moves {
+                let final_square= other_m.final_square();
+                let final_square_piece = board_clone.get_piece_at_square(&final_square);
+
+                match final_square_piece {
+                    None => {} // move into an empty Square
+                    Some(other) => {
+                        if other.piece == Piece::King {
+                            legal_moves.retain(|mov| mov != &m);
+                        }
+                    }
+                }
+            }
+
+            // if board_clone.is_king_in_check(&self.color) {
+                // legal_moves.retain(|mov| mov != &m);
+            // }
+        }
     }
 
     pub fn search(&mut self, moves: Vec<String>, times: PlayerTimes, stop_flag: Arc<AtomicBool>) -> String {
         // self.apply_moves(moves);
 
-        let legal_moves = self.board.get_legal_moves(&self.color);
+        let mut legal_moves = self.board.get_legal_moves(&self.color);
+
+        self.remove_checks(&mut legal_moves);
 
         // println!("das1");
         // stdout().flush().unwrap();

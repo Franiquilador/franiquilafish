@@ -186,7 +186,7 @@ impl Board {
     }
 
     pub fn get_legal_moves(&self, moving_player: &Color) -> Vec<Move> {
-        let mut valid_moves = vec![];
+        let mut legal_moves = vec![];
 
         for (i, row) in self.pieces.iter().enumerate() {
             
@@ -204,13 +204,13 @@ impl Board {
                         
                             let pos = Square::new(file, rank).expect("should be a valid square but it is not");
                         
-                            self.insert_valid_moves(piece, &pos, &mut valid_moves, moving_player); //
+                            self.insert_valid_moves(piece, &pos, &mut legal_moves, moving_player); //
                         }
                     }
                 }
             }
         };
-        valid_moves
+        legal_moves
     }
 
     //inserts the valid moves for one piece
@@ -218,12 +218,57 @@ impl Board {
         let all_moves = piece.all_moves(pos); // all moves for the piece, including invalid ones   
         
         for m in all_moves {
-            if self.is_move_valid(m, color) { // check if the piece move is valid within the board context
+            if self.is_move_valid(m, color) /*&& !self.is_king_in_check(m, color)*/ { // check if the piece move is valid within the board context
                 valid_moves.push(m);
                 // println!("b")
             }
         };
     }
+
+    /*
+    fn is_king_in_check(&self, m: Move, color: &Color) -> bool { // checks if the moving players king stays in check after the move
+        let mut pieces_clone = self.pieces.clone();
+
+        let moving_piece = self.get_piece_at_square(&m.get_starting_square()); // none if the square is empty
+
+        self.update_square(moving_piece, &m.final_square(), &mut pieces_clone);
+        
+        self.update_square(None, &&m.get_starting_square(), &mut pieces_clone);
+
+        for row in self.pieces {
+            for piece in row {
+                match piece {
+                    None => {} // Empty square
+                    Some(p) => {
+                        if &p.color == color {
+                            continue;
+                        } else { // only want to check if enemy pieces can "capture our king", after the move
+                            let other_players_color = if color == &Color::Black { Color::White } else { Color::Black }; 
+
+                            let other_player_legal_moves = self.get_legal_moves(&other_players_color, &pieces_clone);
+
+                            for m in other_player_legal_moves {
+                                let final_square = m.final_square();
+                                let col = file_to_num(final_square.file);
+                                let row = final_square.rank as usize - 1;
+
+                                match pieces_clone[row][col as usize] {
+                                    None => {} // legal move into an empty square
+                                    Some(p) => match p.piece {
+                                                Piece::King => { return true; } // the last square of the other players move was our king, which means it was attemping to capture us, and we would be in check
+                                                _ => {}
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        false
+    }*/
+
+        
 
     fn is_move_valid(&self, m: Move, color: &Color) -> bool {
         let starting_square = &m.get_starting_square();
@@ -235,6 +280,8 @@ impl Board {
 
         let rank_dif = final_square.rank - starting_square.rank;
         let file_dif = (final_square.file as i8) - (starting_square.file as i8);
+
+        let is_vertical = if rank_dif == 0 { false } else { true };
 
         match moving_piece.piece { // check for pieces in between, pieces cant hop over another piece unless its the knight
             Piece::Bishop => {
@@ -266,12 +313,9 @@ impl Board {
                         }
                     }
                 }
-
-                return true
             },
 
             Piece::Rook => {
-                let is_vertical = if rank_dif == 0 { false } else { true };
                 let mut steps: i8 = 0;
                 let mut rank_coef = 0;
                 let mut file_coef = 0;
@@ -303,11 +347,9 @@ impl Board {
                         }
                     }
                 }
-                return true;
             },
             
             Piece::Queen => {
-                let is_vertical = if rank_dif == 0 { false } else { true };
                 let is_horizontal = if file_dif == 0 { false } else { true };
 
                 let is_diagonal = if is_vertical && is_horizontal { true } else { false };
@@ -376,7 +418,6 @@ impl Board {
                     }
                     
                 }
-                return true;
             }
 
             _ => {}
@@ -437,7 +478,7 @@ impl Board {
                     match piece.piece {
                         Piece::King => {
                             // println!("falta a logica de cheque do rei");
-                            false
+                            true
                         },
                         _ => match moving_piece.piece {
                                 Piece::Pawn => {
@@ -454,8 +495,9 @@ impl Board {
                                 },
 
                                 _ => {
+                                    // TODO!!
                                     // println!("falta a logica de peças capturarem-se");
-                                    false
+                                    true
                                 }
                             }
                     }
