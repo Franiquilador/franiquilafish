@@ -233,46 +233,86 @@ impl Board {
 
         let final_square_piece=  self.get_piece_at_square(final_square); // should be none if there is no piece at the final square
 
-        if moving_piece.piece == Piece::Bishop {
-            let rank_dif = starting_square.rank - final_square.rank;
-            let file_dif = (starting_square.file as i8) - (final_square.file as i8);
+        let rank_dif = final_square.rank - starting_square.rank;
+        let file_dif = (final_square.file as i8) - (starting_square.file as i8);
 
-            let steps = rank_dif.abs();
-            if steps != <i8 as Into<i32>>::into(file_dif).abs() {
-                return false;  // Not a diagonal move!
-            }
+        match moving_piece.piece {
+            Piece::Bishop => {
+                let rank_coef = if rank_dif < 0 {
+                    -1
+                } else {
+                    1
+                };
 
-            // One square moves are always valid (no pieces in between)
-            if steps == 1 {
-                return true;
-            }
+                let file_coef = if file_dif < 0 {
+                    -1
+                } else {
+                    1
+                };
 
-            let rank_step = if rank_dif > 0 {
-                -1
-            } else {
-                1
-            };
+                let steps = rank_dif.abs();
+                if steps != <i8 as Into<i32>>::into(file_dif).abs() {
+                    return false;  // Not a diagonal move!
+                }
 
-            let file_step = if file_dif > 0 {
-                -1
-            } else {
-                1
-            };
+                // One square moves are always valid (no pieces in between)
+                if steps == 1 && final_square_piece == None {
+                    return true;
+                }
 
-            for i in 1..steps {
-                let new_rank = starting_square.rank + (rank_step * i);
-                let new_file = ((starting_square.file as i8) + ((file_step as i8) * (i as i8))) as u8 as char;
+                for i in 1..steps {
+                    let new_rank = starting_square.rank + (rank_coef * i);
+                    let new_file = ((starting_square.file as i8) + ((file_coef as i8) * (i as i8))) as u8 as char;
 
-                match Square::new(new_file, new_rank) {
-                    None => return false,
-                    Some(s) => if self.get_piece_at_square(&s) != None {
-                        return false;
+                    match Square::new(new_file, new_rank) {
+                        None => return false,
+                        Some(s) => if self.get_piece_at_square(&s) != None {
+                            return false;
+                        }
                     }
                 }
-            }
 
-            return true
-        }
+                return true
+            },
+
+            Piece::Rook => {
+                let is_vertical = if rank_dif == 0 { false } else { true };
+                let mut steps: i8 = 0;
+                let mut rank_coef = 0;
+                let mut file_coef = 0;
+
+                if is_vertical {
+                    rank_coef = if rank_dif > 0 { 1 } else { -1 };
+                    steps = rank_dif.abs().try_into().unwrap() 
+                } else {
+                    file_coef = if file_dif > 0 { 1 } else { -1 };
+                    steps = file_dif.abs() 
+                };
+                
+                for i in 1..steps {
+                    let mut new_rank = starting_square.rank as i8;
+                    let mut new_file = starting_square.file;
+
+                    if is_vertical {
+                        new_rank = (starting_square.rank as i8) + (i * (rank_coef as i8)); 
+                    } else {
+                        new_file = ((starting_square.file as i8) + ((file_coef as i8) * (i as i8))) as u8 as char;
+                    };
+
+                    match Square::new(new_file, new_rank.into()) {
+                        Some(s) => if self.get_piece_at_square(&s) != None {
+                            return false;
+                        }
+                        None => {
+                            return false;
+                        }
+                    }
+                }
+                return true;
+            }
+            
+            _ => {}
+        };
 
         match final_square_piece { // todo! this logic is not finished
             None => {// nao há peça no quadrado final

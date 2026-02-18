@@ -292,8 +292,8 @@ fn search_thread(stop_clone: Arc<AtomicBool>, consumer: Receiver<String>) {
                         engine.set_color(color);
                         
                         
-                        println!("das");
-                        stdout().flush().unwrap();
+                        // println!("das");
+                        // stdout().flush().unwrap();
 
                         let best_move = engine.search(moves.clone(), times, Arc::clone(&stop_clone));
                             

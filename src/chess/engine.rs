@@ -190,8 +190,8 @@ impl Engine {
             }
         }
 
-        println!("das3");
-        stdout().flush().unwrap();
+        // println!("das3");
+        // stdout().flush().unwrap();
 
         // "f7f6".to_string()
         best_move

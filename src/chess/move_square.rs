@@ -43,6 +43,7 @@ impl Move {
 const BASE_TEN: u32 = 10;
 
 impl Square {
+    // returns None if the position is outside the board
     pub fn new(file: char, rank: i32) -> Option<Self> {
         if ('a'..='h').contains(&file) && (1..=8).contains(&rank) {
             Some(Square { file: file, rank: rank })

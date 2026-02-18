@@ -168,6 +168,30 @@ impl ChessPiece {
                 }
             }
 
+            Piece::Rook => {
+                for i in 1..8 {
+                    match pos.offset(i, 0) {
+                        Some(s) => moves.push(Move::from_squares(*pos, s)),
+                        None => {}
+                    };
+
+                    match pos.offset(-i, 0) {
+                        Some(s) => moves.push(Move::from_squares(*pos, s)),
+                        None => {}
+                    };
+
+                    match pos.offset(0, i.into()) {
+                        Some(s) => moves.push(Move::from_squares(*pos, s)),
+                        None => {}
+                    };
+
+                    match pos.offset(0, (-i).into()) {
+                        Some(s) => moves.push(Move::from_squares(*pos, s)),
+                        None => {}
+                    };
+                }
+            }
+
             _ => { 
                 // println!("faltam calcular moves de outras peças")
             },
