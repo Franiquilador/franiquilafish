@@ -12,16 +12,26 @@ use crate::chess::piece::{self, ChessPiece as CP, ChessPiece, Piece};
 #[derive(Debug, Clone)]
 pub struct Board {
     fen: String,
+    en_passant: Option<Square>, // target square for en passant if it exists
+    // pub half_moves: i32, // increments on every turn~, used to skip already aplied moves in UCI comunication
+    half_move_clock: i32, // registered on the fen, use for the 50 move no capture etc draw rule
+    full_moves: i32, //
+    pub current_player: Color,
     pieces: [[Option<ChessPiece>; 8]; 8],
 }
 
-const INITIAL_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+const INITIAL_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"; // capital letters are white
 
 impl Board {
-    pub fn new() -> Self {
+    pub fn new() -> Self { // from starting position
         let initial_pos = String::from(INITIAL_FEN);
         Board {
             fen: initial_pos,
+            en_passant: None,
+            // half_moves: 0,
+            half_move_clock: 0,
+            full_moves: 1,
+            current_player: Color::White,
             pieces: [
                 [
                     Some(ChessPiece {
@@ -167,6 +177,190 @@ impl Board {
         }
     }
 
+    pub fn from_fen(fen_parts: Vec<&str>) -> Self {
+        let n_full_moves = fen_parts.get(5).expect("fen should have full move").parse().unwrap();
+        let current_player = Self::current_player_from_fen(fen_parts.get(1)
+        .expect("fen should have current player"));
+
+        Board {
+            fen: fen_parts.join(" ").trim().to_string(), // joins the fen into a single string with whitespace in between
+            en_passant: Self::en_passant_from_fen(fen_parts.clone()),
+            half_move_clock: fen_parts.get(4).expect("fen should have halfmove clock").parse().unwrap(),
+            full_moves: n_full_moves,
+            current_player: current_player,
+            // half_moves: Self::half_moves_from_fen(n_full_moves, current_player),
+            pieces: Self::pieces_from_fen(fen_parts) }
+    }
+
+    fn half_moves_from_fen(full_moves: i32, current_player: Color) -> i32 {
+        let half_moves = ((full_moves - 1) * 2) + (if current_player == Color::Black { 1 } else { 0 });
+        half_moves
+    }
+
+    pub fn update_move_counts(&mut self, player_who_just_played: Color, is_capture_or_pawn_move: bool) {
+        // self.half_moves += 1;     
+        if player_who_just_played == Color::Black {
+            self.full_moves += 1;
+        }
+
+        if is_capture_or_pawn_move { // reset
+            self.half_move_clock = 0;
+        } else {
+            self.half_move_clock += 1;
+        }
+    }
+
+    fn current_player_from_fen(color: &str) -> Color {
+        match color {
+            "w" => Color::White,
+            "b" => Color::Black,
+            _ => panic!("invalid color"),
+        }
+    }
+
+    fn pieces_from_fen(fen_parts: Vec<&str>) -> [[Option<ChessPiece>; 8]; 8] {
+        let ranks: Vec<&str> = fen_parts.get(0)
+        .expect("should have the board position in the fen")
+        .split('/').rev().collect(); // '/' is more eficient than "/" in this case rev()??????
+
+        // dbg!(ranks.clone());
+        if ranks.len() != 8 {
+            panic!("board should only have 8 elements");
+        }
+
+        let mut pieces_matrix: Vec<Vec<Option<ChessPiece>>> = vec![];
+
+        for rank in ranks {
+            let mut pieces_v: Vec<Option<ChessPiece>> = vec![];
+            for c in rank.chars() {
+                match c.to_digit(10) {
+                    None => {
+                        let mut piece: Option<ChessPiece> = None;
+                        match c {
+                            'r' => {
+                                piece = Some(ChessPiece {
+                                    piece: Piece::Rook,
+                                    color: Color::Black,
+                                })
+                            },
+                            'n' => {
+                                piece = Some(ChessPiece {
+                                    piece: Piece::Knight,
+                                    color: Color::Black,
+                                })
+                            },
+                            'b' => {
+                                piece = Some(ChessPiece {
+                                    piece: Piece::Bishop,
+                                    color: Color::Black,
+                                })
+                            },
+                            'q' => {
+                                piece = Some(ChessPiece {
+                                    piece: Piece::Queen,
+                                    color: Color::Black,
+                                })
+                            },
+                            'k' => {
+                                piece = Some(ChessPiece {
+                                    piece: Piece::King,
+                                    color: Color::Black,
+                                })
+                            },
+                            'p' => {
+                                piece = Some(ChessPiece {
+                                    piece: Piece::Pawn,
+                                    color: Color::Black,
+                                })
+                            },
+                            'P' => {
+                                piece = Some(ChessPiece {
+                                    piece: Piece::Pawn,
+                                    color: Color::White,
+                                })
+                            },
+                            'R' => {
+                                piece = Some(ChessPiece {
+                                    piece: Piece::Rook,
+                                    color: Color::White,
+                                })
+                            },
+                            'N' => {
+                                piece = Some(ChessPiece {
+                                    piece: Piece::Knight,
+                                    color: Color::White,
+                                })
+                            },
+                            'B' => {
+                                piece = Some(ChessPiece {
+                                    piece: Piece::Bishop,
+                                    color: Color::White,
+                                })
+                            },
+                            'Q' => {
+                                piece = Some(ChessPiece {
+                                    piece: Piece::Queen,
+                                    color: Color::White,
+                                })
+                            },
+                            'K' => {
+                                piece = Some(ChessPiece {
+                                    piece: Piece::King,
+                                    color: Color::White,
+                                })
+                            },
+                            e => {
+                                // dbg!(e);
+                                panic!("invalid char in fen board");
+                            }
+                        };
+                        pieces_v.push(piece);
+                    },
+                    Some(n) => {
+                        for _ in 0..n { // empty square N times
+                            pieces_v.push(None);
+                        }
+                    }
+                }
+            }
+            pieces_matrix.push(pieces_v);
+        }
+
+        let ranks_v: Vec<[Option<ChessPiece>; 8]> = pieces_matrix.into_iter()
+        .map(|rank| {
+            rank.try_into().unwrap()
+        })
+        .collect();
+
+        ranks_v.try_into().expect("error converting vec into array/slice")
+    }
+
+    fn en_passant_from_fen(fen_parts: Vec<&str>) -> Option<Square> {
+        let en_passant = fen_parts.get(3)
+        .expect("fen string should come with en passant encoded") // get the element at index 3 if not out of bounds
+        .trim();
+
+        match en_passant {
+            "-" => None,
+            s => {
+                let square = Square::new( // None if it is out of the board
+                    s.chars().nth(0).expect("fen should not be empty"),
+                s.chars().nth(1).expect("fen should have the target square, and the square must have a rank as well").to_digit(10).unwrap().try_into().unwrap()
+                );
+                match square {
+                    None => None,
+                    Some(e) => {
+                        if e.rank == 3 || e.rank == 6 {
+                            square
+                        } else {
+                            None
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     pub fn get_fen(&self) -> &String {
         &self.fen
     }
@@ -223,52 +417,7 @@ impl Board {
                 // println!("b")
             }
         };
-    }
-
-    /*
-    fn is_king_in_check(&self, m: Move, color: &Color) -> bool { // checks if the moving players king stays in check after the move
-        let mut pieces_clone = self.pieces.clone();
-
-        let moving_piece = self.get_piece_at_square(&m.get_starting_square()); // none if the square is empty
-
-        self.update_square(moving_piece, &m.final_square(), &mut pieces_clone);
-        
-        self.update_square(None, &&m.get_starting_square(), &mut pieces_clone);
-
-        for row in self.pieces {
-            for piece in row {
-                match piece {
-                    None => {} // Empty square
-                    Some(p) => {
-                        if &p.color == color {
-                            continue;
-                        } else { // only want to check if enemy pieces can "capture our king", after the move
-                            let other_players_color = if color == &Color::Black { Color::White } else { Color::Black }; 
-
-                            let other_player_legal_moves = self.get_legal_moves(&other_players_color, &pieces_clone);
-
-                            for m in other_player_legal_moves {
-                                let final_square = m.final_square();
-                                let col = file_to_num(final_square.file);
-                                let row = final_square.rank as usize - 1;
-
-                                match pieces_clone[row][col as usize] {
-                                    None => {} // legal move into an empty square
-                                    Some(p) => match p.piece {
-                                                Piece::King => { return true; } // the last square of the other players move was our king, which means it was attemping to capture us, and we would be in check
-                                                _ => {}
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        false
-    }*/
-
-        
+    } 
 
     fn is_move_valid(&self, m: Move, color: &Color) -> bool {
         let starting_square = &m.get_starting_square();
@@ -478,7 +627,16 @@ impl Board {
                     match piece.piece {
                         Piece::King => {
                             // println!("falta a logica de cheque do rei");
-                            true
+                            match moving_piece.piece {
+                                Piece::Pawn => { 
+                                    if starting_square.file != final_square.file {
+                                        true
+                                    } else {
+                                        false
+                                    }
+                                } // so that the pawn cant capture the by moving forward
+                                _ => true
+                            }
                         },
                         _ => match moving_piece.piece {
                                 Piece::Pawn => {

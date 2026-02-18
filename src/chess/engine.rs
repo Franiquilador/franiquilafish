@@ -4,7 +4,7 @@ use std::io::{stdout, Write};
 use crate::chess::board;
 use crate::chess::piece::Piece;
 use board::Board;
-use crate::chess::move_square::Move;
+use crate::chess::move_square::{Move, Square};
 use std::sync::{Arc, Mutex, atomic::AtomicBool};
 
 #[derive(PartialEq, Debug, Clone, Copy)]
@@ -32,7 +32,7 @@ pub struct Engine {
     is_running: bool,
     game_state: GameState,
     color: Color,
-    color_playing: Color,
+    current_player: Color,
     board: Board,
     legal_moves: Vec<Move>,
 }
@@ -43,10 +43,15 @@ impl Engine {
             is_running: true,
             game_state: GameState::Created,
             color: Color::Black,
-            color_playing: Color::White,
+            current_player: Color::White,
             board: Board::new(),
             legal_moves: vec![],
         }
+    }
+
+    pub fn load_from_fen(&mut self, fen_parts: Vec<&str>) { // is called every round if the game started from fen
+        self.board = Board::from_fen(fen_parts);
+        self.current_player = self.board.current_player;
     }
 
     pub fn is_running(&self) -> bool {
@@ -58,11 +63,11 @@ impl Engine {
     }
 
     fn update_active_player(&mut self) {
-        self.board.set_current_player_in_fen(&self.color_playing);
-        if let Color::Black = self.color_playing {
-            self.color_playing = Color::White;
+        self.board.set_current_player_in_fen(&self.current_player);
+        if let Color::Black = self.current_player {
+            self.current_player = Color::White;
         } else {
-            self.color_playing = Color::Black;
+            self.current_player = Color::Black;
         }
     }
 
@@ -80,7 +85,7 @@ impl Engine {
     }
 
     pub fn get_active_player(&self) -> &Color {
-        &self.color_playing
+        &self.current_player
     }
 
     pub fn has_started(&self) -> bool {
@@ -94,7 +99,7 @@ impl Engine {
 
     pub fn is_legal(&mut self, m: &Move) -> bool {
         // dbg!(&self.color_playing);
-        self.legal_moves = self.board.get_legal_moves(&self.color_playing);
+        self.legal_moves = self.board.get_legal_moves(&self.current_player);
 
         
         // println!("num of legal moves: {}", self.legal_moves.len());
@@ -131,12 +136,16 @@ impl Engine {
         board.update_square(None, &&m.get_starting_square());
     }
 
-    pub fn apply_moves(&mut self, moves: Vec<String>) {
-        self.board = Board::new();
+    //Called from main.rs after Position command
+    pub fn apply_moves(&mut self, moves: Vec<String>, is_fen: bool) {
+        if !is_fen {
+            self.board = Board::new();// not in case of fen, because load_from_fen() is called from main before this method.
+            self.current_player = self.board.current_player;
+        }
 
         for move_before in &moves {
             let m = Move::from_uci(move_before).unwrap();
-            self.move_piece(&m);
+            self.move_piece(&m); // updates active player aswell
         }
     }
 
@@ -147,7 +156,7 @@ impl Engine {
             let mut board_clone = self.board.clone();
             self.simulate_move(&m, &mut board_clone);
 
-            let other_player = if self.color == Color::Black { Color::White } else { Color::White };
+            let other_player = if self.color == Color::Black { Color::White } else { Color::Black };
             let other_player_legal_moves = board_clone.get_legal_moves(&other_player);
             
             for other_m in other_player_legal_moves {
@@ -163,13 +172,10 @@ impl Engine {
                     }
                 }
             }
-
-            // if board_clone.is_king_in_check(&self.color) {
-                // legal_moves.retain(|mov| mov != &m);
-            // }
         }
     }
 
+    // returns the best move and updates the move counts on the boards
     pub fn search(&mut self, moves: Vec<String>, times: PlayerTimes, stop_flag: Arc<AtomicBool>) -> String {
         // self.apply_moves(moves);
 
@@ -203,8 +209,9 @@ impl Engine {
 
         // println!("das2");
         // stdout().flush().unwrap();
+        let mut b_m = legal_moves.get(0).expect("no legal moves");
 
-        for m in legal_moves {
+        for m in legal_moves.iter() {
             let mut board_clone = self.board.clone();
             self.simulate_move(&m, &mut board_clone);
 
@@ -213,6 +220,7 @@ impl Engine {
             if self.color == Color::White {
                 if e > best_eval {
                     best_eval = e;
+                    b_m = m;
                     best_move = m.to_uci();
                 }
             } else {
@@ -223,11 +231,37 @@ impl Engine {
             }
         }
 
+        let is_capture_or_pawn_move = self.is_capture_or_pawn_move(*b_m);
+
+        self.board.update_move_counts(self.color, is_capture_or_pawn_move);
+
         // println!("das3");
         // stdout().flush().unwrap();
 
         // "f7f6".to_string()
+        self.move_piece(b_m); // apply engine move
         best_move
+    }
+
+    fn is_capture_or_pawn_move(&self, m: Move) -> bool { // checks important info for the 50 move draw rule
+        let moving_piece = self.board.get_piece_at_square(&m.get_starting_square()).expect("moving from an empty square");
+
+        if moving_piece.piece == Piece::Pawn {
+            return true;
+        }
+
+        let final_square = self.board.get_piece_at_square(&m.final_square());
+
+        match final_square {
+            None => false,
+            Some(p) => {
+                if p.color != self.current_player {
+                    true
+                } else {
+                    panic!("cant capture friendly pieces");
+                }
+            }
+        }
     }
 
     fn eval(&self, board: &Board) -> i32 {

@@ -3,7 +3,7 @@ use diesel::chess::{
 };
 use diesel::chess::engine::PlayerTimes;
 
-use std::{io::stdout, os::windows};
+use std::{io::stdout, iter::TakeWhile, os::windows};
 use std::{io::{self, Write, stdin}, sync::mpsc::{Receiver, Sender}};
 
 use std::thread;
@@ -240,6 +240,23 @@ fn search_thread(stop_clone: Arc<AtomicBool>, consumer: Receiver<String>) {
                 
                 match parts[0] {
                     "position" => {
+                        let fen_or_startpos_opt = parts.iter().find(|s| **s == "fen");
+
+                        let is_fen = match fen_or_startpos_opt { // if its not fen it must be startpos
+                            None => false,
+                            Some(_) => true,
+                        };
+
+                        if is_fen {
+                            let fen_parts = parts.iter()
+                            .skip_while(|s| **s != "fen")
+                            .skip(1) // skip "fen" itself
+                            .take_while(|s| **s != "moves")
+                            .cloned()
+                            .collect::<Vec<_>>();
+                            engine.load_from_fen(fen_parts);
+                        } // do not need an else because the default Engine::new() already builds a board from the startpos
+
                         moves = parts.iter()
                             .skip_while(|s| s != &&"moves")
                             .skip(1) // skip moves word itself
@@ -249,7 +266,7 @@ fn search_thread(stop_clone: Arc<AtomicBool>, consumer: Receiver<String>) {
                         // println!("stored moves {:?}", moves);
                         // stdout().flush().unwrap();
 
-                        engine.apply_moves(moves.clone());
+                        engine.apply_moves(moves.clone(), is_fen);// apply oponents moves
                     },
                     "go" => {
                         let wtime = pairs
@@ -279,18 +296,18 @@ fn search_thread(stop_clone: Arc<AtomicBool>, consumer: Receiver<String>) {
                                     binc: binc,
                                 };
 
-                        let color = match moves.len() % 2 == 0 { // engine color
-                            true => Color::White,
-                            false => Color::Black,
-                        };
+                        // let color = match moves.len() % 2 == 0 { // engine color
+                            // true => Color::White,
+                            // false => Color::Black,
+                        // };
                         // println!("{:?}", moves);
                         // stdout().flush().unwrap();
 
                         // println!("{:?}", color);
                         // stdout().flush().unwrap();
 
-                        engine.set_color(color);
-                        
+                        // engine.set_color(color);
+                        engine.set_color(*engine.get_active_player());
                         
                         // println!("das");
                         // stdout().flush().unwrap();
