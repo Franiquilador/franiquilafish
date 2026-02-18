@@ -236,7 +236,7 @@ impl Board {
         let rank_dif = final_square.rank - starting_square.rank;
         let file_dif = (final_square.file as i8) - (starting_square.file as i8);
 
-        match moving_piece.piece {
+        match moving_piece.piece { // check for pieces in between, pieces cant hop over another piece unless its the knight
             Piece::Bishop => {
                 let rank_coef = if rank_dif < 0 {
                     -1
@@ -255,12 +255,7 @@ impl Board {
                     return false;  // Not a diagonal move!
                 }
 
-                // One square moves are always valid (no pieces in between)
-                if steps == 1 && final_square_piece == None {
-                    return true;
-                }
-
-                for i in 1..steps {
+                for i in 1..steps { // checks the positions between the bishop and the final square
                     let new_rank = starting_square.rank + (rank_coef * i);
                     let new_file = ((starting_square.file as i8) + ((file_coef as i8) * (i as i8))) as u8 as char;
 
@@ -289,7 +284,7 @@ impl Board {
                     steps = file_dif.abs() 
                 };
                 
-                for i in 1..steps {
+                for i in 1..steps { // checks the positions between the rook and the final square
                     let mut new_rank = starting_square.rank as i8;
                     let mut new_file = starting_square.file;
 
@@ -309,8 +304,81 @@ impl Board {
                     }
                 }
                 return true;
-            }
+            },
             
+            Piece::Queen => {
+                let is_vertical = if rank_dif == 0 { false } else { true };
+                let is_horizontal = if file_dif == 0 { false } else { true };
+
+                let is_diagonal = if is_vertical && is_horizontal { true } else { false };
+
+                if is_diagonal {
+                    let rank_coef = if rank_dif < 0 {
+                        -1
+                    } else {
+                        1
+                    };
+
+                    let file_coef = if file_dif < 0 {
+                        -1
+                    } else {
+                        1
+                    };
+
+                    let steps = rank_dif.abs();
+                    if steps != <i8 as Into<i32>>::into(file_dif).abs() {
+                        return false;  // Not a diagonal move!
+                    }
+
+                    for i in 1..steps { // checks the positions between the bishop and the final square
+                        let new_rank = starting_square.rank + (rank_coef * i);
+                        let new_file = ((starting_square.file as i8) + ((file_coef as i8) * (i as i8))) as u8 as char;
+
+                        match Square::new(new_file, new_rank) {
+                            None => return false,
+                            Some(s) => if self.get_piece_at_square(&s) != None {
+                                return false;
+                            }
+                        }
+                    }
+
+                } else {
+                    let mut steps: i8 = 0;
+                    let mut rank_coef = 0;
+                    let mut file_coef = 0;
+
+                    if is_vertical {
+                        rank_coef = if rank_dif > 0 { 1 } else { -1 };
+                        steps = rank_dif.abs().try_into().unwrap() 
+                    } else {
+                        file_coef = if file_dif > 0 { 1 } else { -1 };
+                        steps = file_dif.abs() 
+                    };
+                
+                    for i in 1..steps { // checks the positions between the rook and the final square
+                        let mut new_rank = starting_square.rank as i8;
+                        let mut new_file = starting_square.file;
+
+                        if is_vertical {
+                            new_rank = (starting_square.rank as i8) + (i * (rank_coef as i8)); 
+                        } else {
+                            new_file = ((starting_square.file as i8) + ((file_coef as i8) * (i as i8))) as u8 as char;
+                        };
+
+                        match Square::new(new_file, new_rank.into()) {
+                            Some(s) => if self.get_piece_at_square(&s) != None {
+                                return false;
+                            }
+                            None => {
+                                return false;
+                            }
+                        }
+                    }
+                    
+                }
+                return true;
+            }
+
             _ => {}
         };
 
@@ -387,7 +455,7 @@ impl Board {
 
                                 _ => {
                                     // println!("falta a logica de peças capturarem-se");
-                                    true
+                                    false
                                 }
                             }
                     }

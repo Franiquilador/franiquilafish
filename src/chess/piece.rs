@@ -192,6 +192,93 @@ impl ChessPiece {
                 }
             }
 
+            Piece::Queen => {
+                for i in 1..8 {
+                    //bishops moves
+                    match pos.offset(i, i.into()) {
+                        Some(s) => moves.push(Move::from_squares(*pos, s)),
+                        None => {}
+                    };
+
+                    match pos.offset(i, (-i).into()) {
+                        Some(s) => moves.push(Move::from_squares(*pos, s)),
+                        None => {}
+                    };
+
+                    match pos.offset(-i, (-i).into()) {
+                        Some(s) => moves.push(Move::from_squares(*pos, s)),
+                        None => {}
+                    };
+
+                    match pos.offset(-i, i.into()) {
+                        Some(s) => moves.push(Move::from_squares(*pos, s)),
+                        None => {}
+                    };
+
+                    //rooks moves
+                    match pos.offset(i, 0) {
+                        Some(s) => moves.push(Move::from_squares(*pos, s)),
+                        None => {}
+                    };
+
+                    match pos.offset(-i, 0) {
+                        Some(s) => moves.push(Move::from_squares(*pos, s)),
+                        None => {}
+                    };
+
+                    match pos.offset(0, i.into()) {
+                        Some(s) => moves.push(Move::from_squares(*pos, s)),
+                        None => {}
+                    };
+
+                    match pos.offset(0, (-i).into()) {
+                        Some(s) => moves.push(Move::from_squares(*pos, s)),
+                        None => {}
+                    };
+                }
+            }
+
+            Piece::King => {
+                match pos.offset(0, 1) { // cima
+                    Some(s) => moves.push(Move::from_squares(*pos, s)),
+                    None => {}
+                };
+
+                match pos.offset(1, 0) { // direita
+                    Some(s) => moves.push(Move::from_squares(*pos, s)),
+                    None => {}
+                };
+
+                match pos.offset(1, 1) {
+                    Some(s) => moves.push(Move::from_squares(*pos, s)),
+                    None => {}
+                };
+
+                match pos.offset(0, -1) { // baixo
+                    Some(s) => moves.push(Move::from_squares(*pos, s)),
+                    None => {}
+                };
+
+                match pos.offset(-1, 0) { // esquerda
+                    Some(s) => moves.push(Move::from_squares(*pos, s)),
+                    None => {}
+                };
+
+                match pos.offset(-1, -1) {
+                    Some(s) => moves.push(Move::from_squares(*pos, s)),
+                    None => {}
+                };
+
+                match pos.offset(1, -1) {
+                    Some(s) => moves.push(Move::from_squares(*pos, s)),
+                    None => {}
+                };
+
+                match pos.offset(-1, 1) {
+                    Some(s) => moves.push(Move::from_squares(*pos, s)),
+                    None => {}
+                };
+            }
             _ => { 
                 // println!("faltam calcular moves de outras peças")
             },
