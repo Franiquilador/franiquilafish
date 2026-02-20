@@ -1,3 +1,4 @@
+use std::clone;
 use std::{fmt::DebugStruct, i32, mem::transmute, vec};
 use std::io::{stdout, Write};
 
@@ -99,8 +100,7 @@ impl Engine {
 
     pub fn is_legal(&mut self, m: &Move) -> bool {
         // dbg!(&self.color_playing);
-        self.legal_moves = self.board.get_legal_moves(&self.current_player);
-
+        self.legal_moves = self.board.pseudo_legal_moves(&self.current_player);
         
         // println!("num of legal moves: {}", self.legal_moves.len());
         // dbg!(m);
@@ -128,7 +128,7 @@ impl Engine {
 
     }
 
-    fn simulate_move(&mut self, m: &Move, board: &mut Board) {
+    fn simulate_move(&self, m: &Move, board: &mut Board) {
         let moving_piece = board.get_piece_at_square(&m.get_starting_square());
 
         board.update_square(moving_piece, &m.final_square());
@@ -145,19 +145,23 @@ impl Engine {
 
         for move_before in &moves {
             let m = Move::from_uci(move_before).unwrap();
-            self.move_piece(&m); // updates active player aswell
+            self.move_piece(&m); // updates board and active player color aswell
         }
     }
 
-    fn remove_checks(&mut self, legal_moves: &mut Vec<Move>) { // removes moves that make the engines king remain in check
-        // let mut board_clone = self.board.clone(); // faz um clone, mexe na board, e pede os legal moves do outro depois de mexer na board
+    fn get_legal_moves(&self, board: &Board, color: Color) -> Vec<Move> {
+        let mut pseudo_legal_moves = board.pseudo_legal_moves(&color);
+        self.remove_checks(&mut pseudo_legal_moves, color, board);
+        pseudo_legal_moves // become legal after removing moves that leave the king in check
+    }
 
+    fn remove_checks(&self, legal_moves: &mut Vec<Move>, color: Color, board: &Board) { // removes moves that make the engines king remain in check
         for m in legal_moves.clone() { // for each of the engine legal moves, check if it does not leave the engines king in check
-            let mut board_clone = self.board.clone();
+            let mut board_clone = board.clone();
             self.simulate_move(&m, &mut board_clone);
 
-            let other_player = if self.color == Color::Black { Color::White } else { Color::Black };
-            let other_player_legal_moves = board_clone.get_legal_moves(&other_player);
+            let other_player = if color == Color::Black { Color::White } else { Color::Black };
+            let other_player_legal_moves = board_clone.pseudo_legal_moves(&other_player);
             
             for other_m in other_player_legal_moves {
                 let final_square= other_m.final_square();
@@ -175,14 +179,49 @@ impl Engine {
         }
     }
 
+    pub fn perft(&mut self, max_depth: i32) {
+        let mut board_clone = self.board.clone();
+
+        for depth in 1..=max_depth { // iterative deepening
+
+            let start = std::time::Instant::now();
+
+            //
+            let possible_positions = self.perft_aux(depth, &mut board_clone, self.current_player);
+            let duration = start.elapsed();
+
+            // moves generated per_second
+            let nodes_per_second = possible_positions as f64 / duration.as_secs_f64();
+            
+            println!("{possible_positions} possible positions at depth {depth} generated in {:.3} seconds, ({:.0} nodes per second)", duration.as_secs_f64(), nodes_per_second);
+        }
+        println!("------------------- finished perft -------------------");
+    }
+
+    fn perft_aux(&self, depth: i32, board: &mut Board, color: Color) -> i32 { //max depth this iteration
+        if depth == 0 {
+            return 1;
+        }
+        
+        let mut nodes = 0;
+
+        for m in self.get_legal_moves(board, color) {
+            let mut board_for_this_branch = board.clone();
+
+            self.simulate_move(&m, &mut board_for_this_branch);
+
+            nodes += self.perft_aux(depth - 1, &mut board_for_this_branch,
+            if color == Color::White { Color::Black } else { Color::White });
+        }
+        
+        return nodes;
+    }
+
     // returns the best move and updates the move counts on the boards
     pub fn search(&mut self, moves: Vec<String>, times: PlayerTimes, stop_flag: Arc<AtomicBool>) -> String {
         // self.apply_moves(moves);
 
-        let mut legal_moves = self.board.get_legal_moves(&self.color);
-
-        self.remove_checks(&mut legal_moves);
-
+        let legal_moves = self.get_legal_moves(&self.board, self.color); // get all legal moves from the current board
         // println!("das1");
         // stdout().flush().unwrap();
         
@@ -239,7 +278,7 @@ impl Engine {
         // stdout().flush().unwrap();
 
         // "f7f6".to_string()
-        self.move_piece(b_m); // apply engine move
+        self.move_piece(b_m); // apply engine move to the board
         best_move
     }
 

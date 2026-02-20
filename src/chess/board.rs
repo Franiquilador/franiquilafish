@@ -379,7 +379,7 @@ impl Board {
         self.pieces.clone()
     }
 
-    pub fn get_legal_moves(&self, moving_player: &Color) -> Vec<Move> {
+    pub fn pseudo_legal_moves(&self, moving_player: &Color) -> Vec<Move> {
         let mut legal_moves = vec![];
 
         for (i, row) in self.pieces.iter().enumerate() {

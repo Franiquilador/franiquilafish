@@ -239,6 +239,10 @@ fn search_thread(stop_clone: Arc<AtomicBool>, consumer: Receiver<String>) {
                 let mut pairs = parts.windows(2);
                 
                 match parts[0] {
+                    "perft" => { 
+                        let max_depth = parts[1].parse().expect("error parsing str");
+                        engine.perft(max_depth);
+                    },
                     "position" => {
                         let fen_or_startpos_opt = parts.iter().find(|s| **s == "fen");
 
