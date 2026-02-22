@@ -27,7 +27,7 @@ impl Move {
         Move { initial: start, end: end }
     }
 
-    pub fn get_starting_square(&self) -> Square {
+    pub fn starting_square(&self) -> Square {
         self.initial
     }
 

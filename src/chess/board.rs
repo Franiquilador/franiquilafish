@@ -182,14 +182,20 @@ impl Board {
         let current_player = Self::current_player_from_fen(fen_parts.get(1)
         .expect("fen should have current player"));
 
-        Board {
+        let ep_square = Self::en_passant_from_fen(fen_parts.clone());
+
+        let mut board = Board {
             fen: fen_parts.join(" ").trim().to_string(), // joins the fen into a single string with whitespace in between
-            en_passant: Self::en_passant_from_fen(fen_parts.clone()),
+            en_passant: None,
             half_move_clock: fen_parts.get(4).expect("fen should have halfmove clock").parse().unwrap(),
             full_moves: n_full_moves,
             current_player: current_player,
             // half_moves: Self::half_moves_from_fen(n_full_moves, current_player),
-            pieces: Self::pieces_from_fen(fen_parts) }
+            pieces: Self::pieces_from_fen(fen_parts) };
+
+        board.en_passant(ep_square);
+        
+        board
     }
 
     fn half_moves_from_fen(full_moves: i32, current_player: Color) -> i32 {
@@ -361,6 +367,54 @@ impl Board {
         }
     }
 
+    pub fn en_passant(&mut self, square: Option<Square>) { // changes the en-passant target square
+        let previous_en_passant = self.en_passant;
+        
+        match previous_en_passant {
+            None => {},
+            Some(s) => {
+                let ghost_color = if s.rank == 3 { Color::White } else { Color::Black };
+                let piece_at_ghost = self.get_piece_at_square(&s);
+
+                match piece_at_ghost {
+                    None => {
+                        self.update_square(None, &s); // remove the temporary en passant target piece
+                    },
+                    Some(p) => {
+                        if p.color == ghost_color {
+                            self.update_square(None, &s); // remove the temporary en passant target piece
+                        }
+                    }
+                }
+
+                
+            },
+        };
+
+        match square {
+            None => {},
+            Some(s) => {
+                let color = if s.rank == 3 { Color::White } else { Color::Black };
+                
+                match s.rank {
+                    3 | 6 => { // or
+                        self.update_square(Some(ChessPiece {
+                            color: color,
+                            piece: Piece::Pawn,
+                        }), &s);
+                    },
+                    _ => { panic!("ilegal en passant target square") }
+                };
+            }
+        };
+
+        self.en_passant = square;
+    }
+
+    pub fn get_en_passant(&self) -> Option<Square> {
+        self.en_passant
+    }
+
     pub fn get_fen(&self) -> &String {
         &self.fen
     }
@@ -420,8 +474,18 @@ impl Board {
     } 
 
     fn is_move_valid(&self, m: Move, color: &Color) -> bool {
-        let starting_square = &m.get_starting_square();
+        let starting_square = &m.starting_square();
         let final_square = &m.final_square();
+
+
+        let ep = match self.en_passant {
+            None => false,
+            Some(_) => true,
+        };
+        let is_ep_ghost = match self.en_passant {// check if the final square matches the en-passant target square
+            None => { false },
+            Some(s) => { if s == *final_square { true } else { false }}
+        };
 
         let moving_piece = self.get_piece_at_square(starting_square).expect("there should be a piece at this position in the board");
 
@@ -456,8 +520,8 @@ impl Board {
                     let new_file = ((starting_square.file as i8) + ((file_coef as i8) * (i as i8))) as u8 as char;
 
                     match Square::new(new_file, new_rank) {
-                        None => return false,
-                        Some(s) => if self.get_piece_at_square(&s) != None {
+                        None => return false, //only if the square is outside the board, never triggers in practice
+                        Some(s) => if self.get_piece_at_square(&s) != None && (if ep { self.en_passant.unwrap() != s } else {true})  {
                             return false;
                         }
                     }
@@ -488,10 +552,10 @@ impl Board {
                     };
 
                     match Square::new(new_file, new_rank.into()) {
-                        Some(s) => if self.get_piece_at_square(&s) != None {
+                        Some(s) => if self.get_piece_at_square(&s) != None && (if ep { self.en_passant.unwrap() != s } else {true}) {
                             return false;
                         }
-                        None => {
+                        None => { //only if the square is outside the board, never triggers in practice
                             return false;
                         }
                     }
@@ -526,8 +590,8 @@ impl Board {
                         let new_file = ((starting_square.file as i8) + ((file_coef as i8) * (i as i8))) as u8 as char;
 
                         match Square::new(new_file, new_rank) {
-                            None => return false,
-                            Some(s) => if self.get_piece_at_square(&s) != None {
+                            None => return false, //only if the square is outside the board, never triggers in practice
+                            Some(s) => if self.get_piece_at_square(&s) != None && (if ep { self.en_passant.unwrap() != s } else {true}) {
                                 return false;
                             }
                         }
@@ -557,11 +621,11 @@ impl Board {
                         };
 
                         match Square::new(new_file, new_rank.into()) {
-                            Some(s) => if self.get_piece_at_square(&s) != None {
+                            Some(s) => if self.get_piece_at_square(&s) != None && (if ep { self.en_passant.unwrap() != s } else {true}) {
                                 return false;
                             }
                             None => {
-                                return false;
+                                return false; //only if the square is outside the board, never triggers in practice
                             }
                         }
                     }
@@ -585,7 +649,7 @@ impl Board {
                                         && (starting_square.rank != 7) {
                                         false
                                     } else {
-                                        if (/*starting_square.rank == 7 &&*/ self.get_piece_at_square(&Square { rank: starting_square.rank - 1, file: starting_square.file }) != None) {
+                                        if (self.get_piece_at_square(&Square { rank: starting_square.rank - 1, file: starting_square.file }) != None) {
                                             false
                                         } else {
                                             true    
@@ -597,7 +661,7 @@ impl Board {
                                         && (starting_square.rank != 2) {
                                         false
                                     } else {
-                                        if (/*starting_square.rank == 2 &&*/ self.get_piece_at_square(&Square { rank: starting_square.rank + 1, file: starting_square.file }) != None) {
+                                        if (self.get_piece_at_square(&Square { rank: starting_square.rank + 1, file: starting_square.file }) != None) {
                                             false
                                         } else {
                                             true
@@ -622,23 +686,14 @@ impl Board {
             Some(piece) => { // ha uma peça no quadrado final
                 let piece_color = piece.color;
                 if piece_color == *color { // essa peça é da mesma equipa
-                    false
+                    if is_ep_ghost { // check for the ghost target
+                        true
+                    } else {
+                        false
+                    }
                 } else { // é capturável/da outra equipa
-                    match piece.piece {
-                        Piece::King => {
-                            // println!("falta a logica de cheque do rei");
-                            match moving_piece.piece {
-                                Piece::Pawn => { 
-                                    if starting_square.file != final_square.file {
-                                        true
-                                    } else {
-                                        false
-                                    }
-                                } // so that the pawn cant capture the by moving forward
-                                _ => true
-                            }
-                        },
-                        _ => match moving_piece.piece {
+                    if is_ep_ghost {
+                        match moving_piece.piece {
                                 Piece::Pawn => {
                                     if starting_square.file != final_square.file {
                                         true
@@ -646,18 +701,44 @@ impl Board {
                                         false
                                     }
                                 },
-
-                                Piece::Knight => {
-                                    // todo!("falta logica de pins cheques, e peças no caminho quando nao é o cavalo a mexer");
-                                    true
-                                },
-
-                                _ => {
-                                    // TODO!!
-                                    // println!("falta a logica de peças capturarem-se");
-                                    true
-                                }
+                                _ => true, // enemy pieces can move there because it is actually an empty square, there is no piece there
                             }
+                    } else {
+                        match piece.piece {
+                            Piece::King => {
+                                // println!("falta a logica de cheque do rei");
+                                match moving_piece.piece {
+                                    Piece::Pawn => { 
+                                        if starting_square.file != final_square.file {
+                                            true
+                                        } else {
+                                            false
+                                        }
+                                    } // so that the pawn cant capture the by moving forward
+                                    _ => true
+                                }
+                            },
+                            _ => match moving_piece.piece {
+                                    Piece::Pawn => {
+                                        if starting_square.file != final_square.file {
+                                            true
+                                        } else {
+                                            false
+                                        }
+                                    },
+
+                                    Piece::Knight => {
+                                        // todo!("falta logica de pins cheques, e peças no caminho quando nao é o cavalo a mexer");
+                                        true
+                                    },
+
+                                    _ => {
+                                        // TODO!!
+                                        // println!("falta a logica de peças capturarem-se");
+                                        true
+                                    }
+                            }
+                        }
                     }
                 }
             },

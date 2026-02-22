@@ -3,15 +3,15 @@ use std::{fmt::DebugStruct, i32, mem::transmute, vec};
 use std::io::{stdout, Write};
 
 use crate::chess::board;
-use crate::chess::piece::Piece;
+use crate::chess::piece::{ChessPiece, Piece};
 use board::Board;
 use crate::chess::move_square::{Move, Square};
 use std::sync::{Arc, Mutex, atomic::AtomicBool};
 
 #[derive(PartialEq, Debug, Clone, Copy)]
 pub enum Color {
-    Black,
     White,
+    Black,
 }
 
 pub enum GameState {
@@ -115,25 +115,74 @@ impl Engine {
     //  pre: self.is_legal(m)
     pub fn move_piece(&mut self, m: &Move) {
         
-        let moving_piece = self.board.get_piece_at_square(&m.get_starting_square()); // none if the square is empty
+        let moving_piece = self.board.get_piece_at_square(&m.starting_square()); // none if the square is empty
+        let final_piece = self.board.get_piece_at_square(&m.final_square());
+
         // dbg!(&self.board);
         self.board.update_square(moving_piece, &m.final_square());
 
         // dbg!(&self.board);
-        self.board.update_square(None, &&m.get_starting_square());
+        self.board.update_square(None, &&m.starting_square());
+
+        Self::update_en_passant(m, &mut self.board, moving_piece, final_piece);
         
         // dbg!(&self.board);
         self.update_active_player();
         // todo!();
-
     }
 
     fn simulate_move(&self, m: &Move, board: &mut Board) {
-        let moving_piece = board.get_piece_at_square(&m.get_starting_square());
+        let moving_piece = board.get_piece_at_square(&m.starting_square());
+        let final_piece = board.get_piece_at_square(&m.final_square());
 
         board.update_square(moving_piece, &m.final_square());
 
-        board.update_square(None, &&m.get_starting_square());
+        board.update_square(None, &&m.starting_square());
+
+        Self::update_en_passant(m, board, moving_piece, final_piece);
+    }
+
+    fn update_en_passant(m: &Move, board: &mut Board, moving_piece: Option<ChessPiece>, final_piece_before_move: Option<ChessPiece>) { // static method to avoid borrowing problems       
+        let starting_square = m.starting_square();
+        let final_square = m.final_square();
+        
+        let rank_dif = (final_square.rank - starting_square.rank).abs();
+        let file_dif = (final_square.file as i8 - starting_square.file as i8).abs();
+    
+        let is_moving_piece_pawn = moving_piece.map(|p| p.piece == Piece::Pawn).unwrap_or(false);
+        let is_double_push_white= is_moving_piece_pawn && starting_square.rank == 2 && rank_dif == 2;
+        let is_double_push_black = is_moving_piece_pawn && starting_square.rank == 7 && rank_dif == 2;
+        let is_en_passant = is_double_push_white || is_double_push_black;
+
+        let is_white_capture = starting_square.rank == 5; // white capture black en passant
+
+        // let final_piece = board.get_piece_at_square(&m.final_square());
+
+        match final_piece_before_move { // to check if it is a capture, to both pawns (ghost target and the actual pawn)
+            None => {}
+            Some(p) => {
+                let e_p = board.get_en_passant();
+
+                match e_p {
+                    None => {}
+                    Some(s) => {
+
+                        //its en passant
+                        if final_square == s && (moving_piece.unwrap().piece == Piece::Pawn) && file_dif == 1 { // we also have to remove the original pawn that moved 2 squares
+                            board.update_square(None, &Square::new(s.file, if is_white_capture { s.rank - 1 } else { s.rank + 1} ).unwrap());
+                        }
+                    }
+                }
+            }
+        };
+
+        if is_double_push_white { // update the target square
+            board.en_passant(Square::new(starting_square.file, starting_square.rank + 1));
+        } else if is_double_push_black {
+            board.en_passant(Square::new(starting_square.file, starting_square.rank - 1));
+        } else {
+            board.en_passant(None);
+        }
     }
 
     //Called from main.rs after Position command
@@ -162,6 +211,10 @@ impl Engine {
 
             let other_player = if color == Color::Black { Color::White } else { Color::Black };
             let other_player_legal_moves = board_clone.pseudo_legal_moves(&other_player);
+
+            // eprintln!("Simulated black move: {}", m.to_uci());
+            // eprintln!("White pseudo-legal moves after: {:?}", 
+                // other_player_legal_moves.iter().map(|x| x.to_uci()).collect::<Vec<_>>());
             
             for other_m in other_player_legal_moves {
                 let final_square= other_m.final_square();
@@ -171,6 +224,7 @@ impl Engine {
                     None => {} // move into an empty Square
                     Some(other) => {
                         if other.piece == Piece::King {
+                            // println!("  -> {} attacks king via {}, removing it", other_m.to_uci(), m.to_uci());
                             legal_moves.retain(|mov| mov != &m);
                         }
                     }
@@ -179,7 +233,62 @@ impl Engine {
         }
     }
 
+    pub fn web_perft(&self, depth: i32) {
+        println!("starting webperft {depth}...");
+        let mut board_clone = self.board.clone();
+
+        for d in 1..=depth { // iterative deepening
+            if d != depth {// to remove iterative deepening
+                continue;
+            }
+            let start = std::time::Instant::now();
+
+            //
+            let possible_positions = self.perft_aux_wp(d, &mut board_clone, self.current_player);
+            let duration = start.elapsed(); // not acurate because perft_aux does iterative deepening, and it does not account for time of previous
+
+            // moves generated per_second
+            let nodes_per_second = possible_positions as f64 / duration.as_secs_f64();
+            
+            // if d == depth {
+                // println!("{possible_positions} possible positions at depth {d} generated in {:.3} seconds, ({:.0} nodes per second)", duration.as_secs_f64(), nodes_per_second);
+            // }
+            println!("{possible_positions} possible positions at depth {d} generated in {:.3} seconds, ({:.0} nodes per second)", duration.as_secs_f64(), nodes_per_second);
+        }
+        println!("------------------- finished webperft ---------------------");
+    }
+
+    fn perft_aux_wp(&self, depth: i32, board: &mut Board, color: Color) -> i32 { //max depth this iteration
+        if depth == 0 {
+            return 1;
+        }
+        
+        let mut nodes = 0;
+        let next_color = if color == Color::White { Color::Black } else { Color::White };
+
+        for m in self.get_legal_moves(board, color) {
+            let mut board_for_this_branch = board.clone();
+            
+            self.simulate_move(&m, &mut board_for_this_branch);
+
+            // let branching_factor = self.get_legal_moves(&board_for_this_branch, next_color).len();
+
+            //move count for the specific move just made. it is the number of possible positions/nodes after this move
+            let move_count = self.perft_aux(depth - 1, &mut board_for_this_branch, next_color);
+
+            nodes += move_count;
+
+            // println!("{}: {move_count} possible moves after it when depth = {depth}", m.to_uci());//understanding
+
+            println!("{}: {move_count}", m.to_uci()); // for webperft diff
+        }
+        // this bellow makes sense because depth 1 means only 1 move is allowed, and that move is b1a3, which leads to a leaf node and implies that the only position allowed is the one after b1a3 is played
+        // Move { initial: Square { rank: 1, file: 'b' }, end: Square { rank: 3, file: 'a' } }: 1 possible moves after it when depth = 1
+        return nodes;
+    }
+
     pub fn perft(&mut self, max_depth: i32) {
+        println!("starting perft {max_depth}...");
         let mut board_clone = self.board.clone();
 
         for depth in 1..=max_depth { // iterative deepening
@@ -188,7 +297,7 @@ impl Engine {
 
             //
             let possible_positions = self.perft_aux(depth, &mut board_clone, self.current_player);
-            let duration = start.elapsed();
+            let duration = start.elapsed(); // not acurate because perft_aux does iterative deepening, and it does not account for time of previous
 
             // moves generated per_second
             let nodes_per_second = possible_positions as f64 / duration.as_secs_f64();
@@ -221,7 +330,9 @@ impl Engine {
     pub fn search(&mut self, moves: Vec<String>, times: PlayerTimes, stop_flag: Arc<AtomicBool>) -> String {
         // self.apply_moves(moves);
 
-        let legal_moves = self.get_legal_moves(&self.board, self.color); // get all legal moves from the current board
+        let board_clone = self.board.clone();
+
+        let legal_moves = self.get_legal_moves(&board_clone, self.color); // get all legal moves from the current board
         // println!("das1");
         // stdout().flush().unwrap();
         
@@ -283,7 +394,7 @@ impl Engine {
     }
 
     fn is_capture_or_pawn_move(&self, m: Move) -> bool { // checks important info for the 50 move draw rule
-        let moving_piece = self.board.get_piece_at_square(&m.get_starting_square()).expect("moving from an empty square");
+        let moving_piece = self.board.get_piece_at_square(&m.starting_square()).expect("moving from an empty square");
 
         if moving_piece.piece == Piece::Pawn {
             return true;

@@ -243,6 +243,10 @@ fn search_thread(stop_clone: Arc<AtomicBool>, consumer: Receiver<String>) {
                         let max_depth = parts[1].parse().expect("error parsing str");
                         engine.perft(max_depth);
                     },
+                    "wp" => { //webperft
+                        let depth = parts[1].parse().expect("error parsing str");
+                        engine.web_perft(depth);
+                    }
                     "position" => {
                         let fen_or_startpos_opt = parts.iter().find(|s| **s == "fen");
 
