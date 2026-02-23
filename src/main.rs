@@ -1,7 +1,7 @@
-use diesel::chess::{
+use franiquilafish::chess::{
     engine::{Color, Engine, GameState}, move_square::Move, piece::{ChessPiece as CP, ChessPiece, Piece as P}, start_match
 };
-use diesel::chess::engine::PlayerTimes;
+use franiquilafish::chess::engine::PlayerTimes;
 
 use std::{io::stdout, iter::TakeWhile, os::windows};
 use std::{io::{self, Write, stdin}, sync::mpsc::{Receiver, Sender}};
