@@ -1,9 +1,10 @@
 use std::cmp::max;
+use std::convert;
 use std::io::{stdout, Write};
 
 // use crate::chess::game::Color;
 use crate::chess::engine::Color;
-use crate::chess::move_square::{Move, Square};
+use crate::chess::move_square::{Move, Square, Promotion};
 use crate::chess::piece::{self, ChessPiece as CP, ChessPiece, Piece};
 
 
@@ -466,8 +467,15 @@ impl Board {
         let all_moves = piece.all_moves(pos); // all moves for the piece, including invalid ones   
         
         for m in all_moves {
-            if self.is_move_valid(m, color) /*&& !self.is_king_in_check(m, color)*/ { // check if the piece move is valid within the board context
-                valid_moves.push(m);
+            if self.is_move_valid(m, color) { // check if the piece move is valid within the board context
+                match piece.piece {
+                    Piece::Pawn => { // convert moves to promotions
+                        self.convert_promotions(m, valid_moves);
+                    }
+                    _ => {
+                        valid_moves.push(m);
+                    }
+                }
                 // println!("b")
             }
         };
@@ -633,6 +641,17 @@ impl Board {
                 }
             }
 
+            /*
+            Piece::Pawn => { // convert moves that are promotions to promotions, because by default the mov gen does not do it in piece.rs
+                let final_rank = m.final_square().rank;
+
+                if final_rank == 1 { // black promotion
+
+                } else if final_rank == 8 { // white promotion
+                    
+                }
+            },*/
+
             _ => {}
         };
 
@@ -744,6 +763,20 @@ impl Board {
             },
         }
     }
+
+    fn convert_promotions(&self, m: Move, valid_moves: &mut Vec<Move>) {
+        let final_rank = m.final_square().rank;
+
+        if final_rank == 1 || final_rank == 8 { // it is a promotion
+            valid_moves.push(Move::from_squares(m.starting_square(), m.final_square(), Some(Promotion::Queen)));
+            valid_moves.push(Move::from_squares(m.starting_square(), m.final_square(), Some(Promotion::Rook)));
+            valid_moves.push(Move::from_squares(m.starting_square(), m.final_square(), Some(Promotion::Bishop)));
+            valid_moves.push(Move::from_squares(m.starting_square(), m.final_square(), Some(Promotion::Knight)));
+        } else { // just a normal pawn move
+            valid_moves.push(m);
+        }
+    }
+
 
     pub fn update_square(&mut self, piece: Option<ChessPiece>, square: &Square) {
         let col = file_to_num(square.file);

@@ -35,9 +35,9 @@ impl Command {
         }
     }
 
-    fn get_move_from_uci(input: &str) -> Option<Move> {
-        Move::from_uci(input)
-    }
+    // fn get_move_from_uci(input: &str) -> Option<Move> {
+        // Move::from_uci(input)
+    // }
 }
 
 enum UciCommand { // all possible comands from the GUI using the UCI protocol

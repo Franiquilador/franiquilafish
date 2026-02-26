@@ -1,8 +1,19 @@
+use std::fmt::format;
+
 
 #[derive(PartialEq, Copy, Clone, Debug)] // for checking object equallity used in .contains of Vec
 pub struct Move {
     initial: Square,
     end: Square,
+    promotion: Option<Promotion>,
+}
+
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum Promotion {
+    Queen,
+    Rook,
+    Bishop,
+    Knight,
 }
 
 #[derive(PartialEq, Copy, Clone, Debug)]
@@ -20,11 +31,26 @@ impl Move {
         Some(Move {
             initial: starting,
             end: ending,
+            promotion: match coords.chars().nth(4) { // Check if the move in uci has an extra char for promotion info
+                Some(p) => {
+                    match p {
+                        'q' => Some(Promotion::Queen),
+                        'r' => Some(Promotion::Rook),
+                        'b' => Some(Promotion::Bishop),
+                        'n' => Some(Promotion::Knight),
+                        _ => {
+                            println!("PAAANNNICCCC");
+                            panic!("no other char is valid for promotion notation");
+                        }
+                    }
+                },
+                None => None,
+            }
         })
     }
 
-    pub fn from_squares(start: Square, end: Square) -> Self {
-        Move { initial: start, end: end }
+    pub fn from_squares(start: Square, end: Square, promotion: Option<Promotion>) -> Self {
+        Move { initial: start, end: end, promotion: promotion } // no promotion by default when generating all moves
     }
 
     pub fn starting_square(&self) -> Square {
@@ -36,7 +62,21 @@ impl Move {
     }
 
     pub fn to_uci(&self) -> String {
-        format!("{}{}", self.initial.to_uci(), self.final_square().to_uci())
+        match self.promotion {
+            None => { format!("{}{}", self.initial.to_uci(), self.final_square().to_uci()) }
+            Some(promotion) => {
+                let mut move_string = format!("{}{}", self.initial.to_uci(), self.final_square().to_uci());
+                match promotion {
+                    Promotion::Queen => { move_string = format!("{}q", move_string); }
+                    Promotion::Rook => { move_string = format!("{}r", move_string); }
+                    Promotion::Knight => { move_string = format!("{}n", move_string); }
+                    Promotion::Bishop => { move_string = format!("{}b", move_string); }
+                }
+
+                move_string
+            }
+        }
+        
     }
 }
 
