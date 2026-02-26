@@ -131,7 +131,7 @@ fn main() {
 
 fn process_move(engine: &mut Engine, m: Move) {
     if engine.is_legal(&m) {
-        engine.move_piece(&m);
+        // engine.move_piece(&m);
     } else {
         println!("ilegal move");
         println!();

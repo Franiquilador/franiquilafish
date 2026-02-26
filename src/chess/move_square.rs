@@ -5,7 +5,7 @@ use std::fmt::format;
 pub struct Move {
     initial: Square,
     end: Square,
-    promotion: Option<Promotion>,
+    pub promotion: Option<Promotion>,
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]

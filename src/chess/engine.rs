@@ -7,6 +7,7 @@ use crate::chess::piece::{ChessPiece, Piece};
 use board::Board;
 use crate::chess::move_square::{Move, Square};
 use std::sync::{Arc, Mutex, atomic::AtomicBool};
+use crate::chess::move_square::Promotion;
 
 #[derive(PartialEq, Debug, Clone, Copy)]
 pub enum Color {
@@ -112,10 +113,29 @@ impl Engine {
         }
     }
 
+    fn promote_piece(moving_piece: &mut Option<ChessPiece>, m: &Move, board: &mut Board, current_player: Color) {// promotes a piece if it is a pawn and is promoting in the move
+        match m.promotion {
+            None => {
+                *moving_piece = board.get_piece_at_square(&m.starting_square()); // none if the square is empty
+            }
+            Some(promotion) => {
+                *moving_piece = Some(ChessPiece { color: current_player,
+                piece: match promotion {
+                        Promotion::Bishop => Piece::Bishop,
+                        Promotion::Knight => Piece::Knight,
+                        Promotion::Rook => Piece::Rook,
+                        Promotion::Queen => Piece::Queen,
+                } })
+            }
+        };
+    }
+
     //  pre: self.is_legal(m)
-    pub fn move_piece(&mut self, m: &Move) {
-        
-        let moving_piece = self.board.get_piece_at_square(&m.starting_square()); // none if the square is empty
+    fn move_piece(&mut self, m: &Move) {
+        let mut moving_piece = None;
+
+        Self::promote_piece(&mut moving_piece, m, &mut self.board, self.current_player);
+
         let final_piece = self.board.get_piece_at_square(&m.final_square());
 
         // dbg!(&self.board);
@@ -132,7 +152,10 @@ impl Engine {
     }
 
     fn simulate_move(&self, m: &Move, board: &mut Board) {
-        let moving_piece = board.get_piece_at_square(&m.starting_square());
+        let mut moving_piece= None;
+
+        Self::promote_piece(&mut moving_piece, m, board, board.current_player);
+
         let final_piece = board.get_piece_at_square(&m.final_square());
 
         board.update_square(moving_piece, &m.final_square());
