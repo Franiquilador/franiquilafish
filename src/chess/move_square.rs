@@ -66,7 +66,7 @@ impl Move {
             None => { format!("{}{}", self.initial.to_uci(), self.final_square().to_uci()) }
             Some(promotion) => {
                 let mut move_string = format!("{}{}", self.initial.to_uci(), self.final_square().to_uci());
-                match promotion {
+                match promotion { // concat the promotion, for example a queen promotion looks like "c2b1q" in UCI
                     Promotion::Queen => { move_string = format!("{}q", move_string); }
                     Promotion::Rook => { move_string = format!("{}r", move_string); }
                     Promotion::Knight => { move_string = format!("{}n", move_string); }
@@ -76,7 +76,6 @@ impl Move {
                 move_string
             }
         }
-        
     }
 }
 

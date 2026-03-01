@@ -133,18 +133,27 @@ impl Engine {
     //  pre: self.is_legal(m)
     fn move_piece(&mut self, m: &Move) {
         let mut moving_piece = None;
+        
+        let starting_square = m.starting_square();
+        let final_square = m.final_square();
 
         Self::promote_piece(&mut moving_piece, m, &mut self.board, self.current_player);
 
-        let final_piece = self.board.get_piece_at_square(&m.final_square());
+        let final_piece = self.board.get_piece_at_square(&final_square);
+
+        let is_a_castle = self.board.is_a_castle(*m);
+        // dbg!(&self.board);
+        self.board.update_square(moving_piece, &final_square);
 
         // dbg!(&self.board);
-        self.board.update_square(moving_piece, &m.final_square());
+        self.board.update_square(None, &starting_square);
 
-        // dbg!(&self.board);
-        self.board.update_square(None, &&m.starting_square());
+        if is_a_castle {
+            Self::move_castled_rook(&mut self.board, &final_square);
+        }
 
         Self::update_en_passant(m, &mut self.board, moving_piece, final_piece);
+        Self::update_castling_rights(&mut self.board, moving_piece, final_piece, &starting_square, &final_square);
         
         // dbg!(&self.board);
         self.update_active_player();
@@ -154,15 +163,98 @@ impl Engine {
     fn simulate_move(&self, m: &Move, board: &mut Board) {
         let mut moving_piece= None;
 
+        let starting_square = m.starting_square();
+        let final_square = m.final_square();
+
         Self::promote_piece(&mut moving_piece, m, board, board.current_player);
 
-        let final_piece = board.get_piece_at_square(&m.final_square());
+        let final_piece = board.get_piece_at_square(&final_square);
 
-        board.update_square(moving_piece, &m.final_square());
+        let is_a_castle = board.is_a_castle(*m);
 
-        board.update_square(None, &&m.starting_square());
+        board.update_square(moving_piece, &final_square);
+
+        board.update_square(None, &starting_square);
+
+        if is_a_castle {
+            Self::move_castled_rook(board, &final_square);
+        }
 
         Self::update_en_passant(m, board, moving_piece, final_piece);
+        Self::update_castling_rights(board, moving_piece, final_piece, &starting_square, &final_square);
+
+    }
+
+    fn move_castled_rook(board: &mut Board, final_square: &Square) { // m is the kings castling move notation
+        // let is_king_side = if engine_final_square == Square::new('g', 8).unwrap() { true } else { false };
+        // let is_queen_side = if engine_final_square == Square::new('c', 8).unwrap() { true } else { false };
+        if final_square.rank == 1 {// white
+            if final_square.file == 'g' { // kingside, rook moves from h1 to f1
+                board.update_square(Some(ChessPiece { piece: Piece::Rook, color: Color::White }), &Square { rank: 1, file: 'f' });
+                board.update_square(None, &Square { rank: 1, file: 'h' });
+            } else if final_square.file == 'c' { // queenside, rook moves from a1 to d1
+                board.update_square(Some(ChessPiece { piece: Piece::Rook, color: Color::White }), &Square { rank: 1, file: 'd' });
+                board.update_square(None, &Square { rank: 1, file: 'a' });
+            } else {
+                println!("PANNICCC, should be a castling move");
+                panic!("should be a castling move");
+            }
+        } else if final_square.rank == 8 { // black
+            if final_square.file == 'g' { // kingside, rook moves from h8 to f8
+                board.update_square(Some(ChessPiece { piece: Piece::Rook, color: Color::Black }), &Square { rank: 8, file: 'f' });
+                board.update_square(None, &Square { rank: 8, file: 'h' });
+            } else if final_square.file == 'c' { // queenside, rook moves from a8 to d8
+                board.update_square(Some(ChessPiece { piece: Piece::Rook, color: Color::Black }), &Square { rank: 8, file: 'd' });
+                board.update_square(None, &Square { rank: 8, file: 'a' });
+            } else {
+                println!("PANNICCC, should be a castling move");
+                panic!("should be a castling move");
+            }
+        } else {
+            println!("PANNICCC, should be a castling move");
+            panic!("should be a castling move");
+        }
+    }
+
+    fn update_castling_rights(board: &mut Board, moving_piece: Option<ChessPiece>, final_piece_before_move: Option<ChessPiece>
+    ,starting_square: &Square, final_square: &Square) {
+        match moving_piece {
+            Some(p) => {
+                match p.piece {
+                    Piece::King => { // king moves
+                        board.remove_all_castling(&p.color);
+                    }
+                    Piece::Rook => { // friendly rook moves
+                        board.remove_castling(&p.color, starting_square);
+                    }
+                    _ => {}
+                }
+            }
+            None => {
+                println!("PANNNNICCCCCCCCCC");
+                panic!("moving no piece");
+            }
+        };
+
+        match final_piece_before_move {
+            None => {}
+            Some(p) => { // if a friendly rook is captured on its home square, no castling can happen on that side
+                if p.piece == Piece::Rook {
+                    match p.color { // the color of the rook being captured
+                        Color::Black => {
+                            if final_square.rank == 8 && (final_square.file == 'a' || final_square.file == 'h') {
+                                board.remove_castling(&Color::Black, final_square);
+                            }
+                        }
+                        Color::White => {
+                            if final_square.rank == 1 && (final_square.file == 'a' || final_square.file == 'h') {
+                                board.remove_castling(&Color::White, final_square);
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     fn update_en_passant(m: &Move, board: &mut Board, moving_piece: Option<ChessPiece>, final_piece_before_move: Option<ChessPiece>) { // static method to avoid borrowing problems       
@@ -227,9 +319,51 @@ impl Engine {
         pseudo_legal_moves // become legal after removing moves that leave the king in check
     }
 
+    fn pawn_attacks(board: &Board, color: &Color) -> Vec<Square> { // needed because of tricky castle and pawn captures interactions in remove_checks()
+        let mut attacked = vec![];
+        for (i, row) in board.get_pieces().iter().enumerate() {
+            for (j, piece) in row.iter().enumerate() {
+                if let Some(p) = piece {
+                    if p.color == *color && p.piece == Piece::Pawn {
+                        let file = board::num_to_file(j as u8); // j is the file index (0..7) -> (a..=h)
+                        let rank = (i as i32) + 1;        // i is the rank index (0..7 → 1..8)
+
+                        let pos = Square::new(file, rank).unwrap();
+
+                        match color {
+                            Color::Black => {
+                                match pos.offset(1, -1) { // returns None if the pos is outside the board
+                                    None => {}
+                                    Some(s) => { attacked.push(s); }
+                                };
+                                match pos.offset(-1, -1) { // returns None if the pos is outside the board
+                                    None => {}
+                                    Some(s) => { attacked.push(s); }
+                                };
+                            }
+                            Color::White => {
+                                match pos.offset(1, 1) { // returns None if the pos is outside the board
+                                    None => {}
+                                    Some(s) => { attacked.push(s); }
+                                };
+                                match pos.offset(-1, 1) { // returns None if the pos is outside the board
+                                    None => {}
+                                    Some(s) => { attacked.push(s); }
+                                };
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        attacked
+    }
+
     fn remove_checks(&self, legal_moves: &mut Vec<Move>, color: Color, board: &Board) { // removes moves that make the engines king remain in check
         for m in legal_moves.clone() { // for each of the engine legal moves, check if it does not leave the engines king in check
             let mut board_clone = board.clone();
+            let is_a_castle = board_clone.is_a_castle(m);
+
             self.simulate_move(&m, &mut board_clone);
 
             let other_player = if color == Color::Black { Color::White } else { Color::Black };
@@ -241,12 +375,56 @@ impl Engine {
             
             for other_m in other_player_legal_moves {
                 let final_square= other_m.final_square();
+                if is_a_castle { 
+                    let engine_final_square = m.final_square();
+                    match color {
+                        Color::Black => {
+                            let is_king_side = if engine_final_square == Square::new('g', 8).unwrap() { true } else { false };
+                            let is_queen_side = if engine_final_square == Square::new('c', 8).unwrap() { true } else { false };
+
+                            let pawn_attacks = Self::pawn_attacks(&board_clone, &other_player); // because board_clone.pseudo_legal_moves(&other_player); does not generate pawn checks, since simulate move already castled the king
+                            if pawn_attacks.contains(&Square::new('e', 8).unwrap()) {
+                                legal_moves.retain(|mov| mov != &m);
+                            }
+
+                            if final_square == Square::new('e', 8).unwrap() { // the king cant castle to escape a check
+                                legal_moves.retain(|mov| mov != &m);
+                            }
+
+                            if final_square == Square::new('f', 8).unwrap() && is_king_side {// check for the kings path when castling
+                                legal_moves.retain(|mov| mov != &m);
+                            } else if final_square == Square::new('d', 8).unwrap() && is_queen_side {
+                                legal_moves.retain(|mov| mov != &m);
+                            }
+                        }
+                        Color::White => {
+                            let is_king_side = if engine_final_square == Square::new('g', 1).unwrap() { true } else { false };
+                            let is_queen_side = if engine_final_square == Square::new('c', 1).unwrap() { true } else { false };
+
+                            let pawn_attacks = Self::pawn_attacks(&board_clone, &other_player); // because board_clone.pseudo_legal_moves(&other_player); does not generate pawn checks, since simulate move already castled the king
+                            if pawn_attacks.contains(&Square::new('e', 1).unwrap()) {
+                                legal_moves.retain(|mov| mov != &m);
+                            }
+
+                            if final_square == Square::new('e', 1).unwrap() { // the king cant castle to escape a check
+                                legal_moves.retain(|mov| mov != &m);
+                            }
+
+                            if final_square == Square::new('f', 1).unwrap() && is_king_side {// check for the kings path when castling
+                                legal_moves.retain(|mov| mov != &m);
+                            } else if final_square == Square::new('d', 1).unwrap() && is_queen_side {
+                                legal_moves.retain(|mov| mov != &m);
+                            }
+                        }
+                    };
+                }
+
                 let final_square_piece = board_clone.get_piece_at_square(&final_square);
 
                 match final_square_piece {
                     None => {} // move into an empty Square
                     Some(other) => {
-                        if other.piece == Piece::King {
+                        if other.piece == Piece::King {// engines king can be captured the next move (he will be in check, so the move is ilegal)
                             // println!("  -> {} attacks king via {}, removing it", other_m.to_uci(), m.to_uci());
                             legal_moves.retain(|mov| mov != &m);
                         }

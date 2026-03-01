@@ -1,5 +1,5 @@
 use std::cmp::max;
-use std::convert;
+use std::{convert, vec};
 use std::io::{stdout, Write};
 
 // use crate::chess::game::Color;
@@ -13,12 +13,26 @@ use crate::chess::piece::{self, ChessPiece as CP, ChessPiece, Piece};
 #[derive(Debug, Clone)]
 pub struct Board {
     fen: String,
+    pub current_player: Color,
     en_passant: Option<Square>, // target square for en passant if it exists
+    castling_rights: Vec<char>,
     // pub half_moves: i32, // increments on every turn~, used to skip already aplied moves in UCI comunication
     half_move_clock: i32, // registered on the fen, use for the 50 move no capture etc draw rule
     full_moves: i32, //
-    pub current_player: Color,
     pieces: [[Option<ChessPiece>; 8]; 8],
+}
+
+#[derive(Debug, Clone)]
+enum CastlingSide {
+    All,
+    King,
+    Queen,
+}
+
+#[derive(Debug, Clone)]
+enum Castling {
+    White(Option<CastlingSide>),
+    Black(Option<CastlingSide>),
 }
 
 const INITIAL_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"; // capital letters are white
@@ -28,6 +42,8 @@ impl Board {
         let initial_pos = String::from(INITIAL_FEN);
         Board {
             fen: initial_pos,
+            // castling_rights: [Castling::White(Some(CastlingSide::All)), Castling::Black(Some(CastlingSide::All))],
+            castling_rights: vec!['K', 'Q', 'k', 'q'],
             en_passant: None,
             // half_moves: 0,
             half_move_clock: 0,
@@ -187,16 +203,27 @@ impl Board {
 
         let mut board = Board {
             fen: fen_parts.join(" ").trim().to_string(), // joins the fen into a single string with whitespace in between
+            current_player: current_player,
+            castling_rights: Self::castling(fen_parts.get(2).expect("no castling info")),
             en_passant: None,
             half_move_clock: fen_parts.get(4).expect("fen should have halfmove clock").parse().unwrap(),
             full_moves: n_full_moves,
-            current_player: current_player,
             // half_moves: Self::half_moves_from_fen(n_full_moves, current_player),
             pieces: Self::pieces_from_fen(fen_parts) };
 
         board.en_passant(ep_square);
         
         board
+    }
+
+    fn castling(rights: &str) -> Vec<char> {
+        let mut vec_rights = vec![];
+        
+        for c in rights.chars() {
+            vec_rights.push(c);
+        }
+
+        vec_rights
     }
 
     fn half_moves_from_fen(full_moves: i32, current_player: Color) -> i32 {
@@ -368,6 +395,52 @@ impl Board {
         }
     }
 
+    // removes all castling rights because the King just moved
+    pub fn remove_all_castling(&mut self, color: &Color) {
+        match color {
+            Color::Black => {
+                for c in &self.castling_rights.clone() {
+                    match c {
+                        'k' | 'q' => {
+                            self.castling_rights.retain(|&r|  r != *c); // remove that char from the vec
+                        },
+                        _ => continue,
+                    }
+                }
+            },
+            Color::White => {
+                for c in &self.castling_rights.clone() {
+                    match c {
+                        'K' | 'Q' => {
+                            self.castling_rights.retain(|&r|  r != *c); // remove that char from the vec
+                        },
+                        _ => continue,
+                    }
+                }
+            },
+        }
+    }
+
+    // a rook moved, remove castling from that side
+    pub fn remove_castling(&mut self, moving_color: &Color, initial_square: &Square) {
+        match moving_color {
+            Color::Black => {
+                if initial_square.rank == 8 && initial_square.file == 'h' { // king side remove
+                    self.castling_rights.retain(|c| *c != 'k');
+                } else if initial_square.rank == 8 && initial_square.file == 'a' { // queen side remove
+                    self.castling_rights.retain(|c| *c != 'q');
+                }
+            }
+            Color::White => {
+                if initial_square.rank == 1 && initial_square.file == 'h' { // king side remove
+                    self.castling_rights.retain(|c| *c != 'K');
+                } else if initial_square.rank == 1 && initial_square.file == 'a' { // queen side remove
+                    self.castling_rights.retain(|c| *c != 'Q');
+                }
+            }
+        }
+    }
+
     pub fn en_passant(&mut self, square: Option<Square>) { // changes the en-passant target square
         let previous_en_passant = self.en_passant;
         
@@ -459,6 +532,9 @@ impl Board {
                 }
             }
         };
+
+        self.add_castling(moving_player, &mut legal_moves);
+
         legal_moves
     }
 
@@ -764,6 +840,102 @@ impl Board {
         }
     }
 
+    fn add_castling(&self, color: &Color, legal_moves: &mut Vec<Move>) {
+        match color {
+            Color::Black => {
+                for c in &self.castling_rights {
+                    match c {
+                        'k' => { // if the kings path is not in check -> the square f8, and if there are no pieces in f8 and g8
+                            if self.get_piece_at_square(&Square { rank: 8, file: 'f' }) != None {
+                                continue;
+                            } else if self.get_piece_at_square(&Square { rank: 8, file: 'g' }) != None {
+                                continue;                                
+                            } else {
+                                legal_moves.push(Move::from_squares(Square { rank: 8, file: 'e' }, Square { rank: 8, file: 'g' }, None));
+                            }
+                        }
+                        'q' => { // if the kings path is not in check -> the square d8, and if there are no pieces in d8, c8 and b8
+                            if self.get_piece_at_square(&Square { rank: 8, file: 'd' }) != None {
+                                continue;
+                            } else if self.get_piece_at_square(&Square { rank: 8, file: 'c' }) != None {
+                                continue;                                
+                            } else if self.get_piece_at_square(&Square { rank: 8, file: 'b' }) != None {
+                                continue;
+                            } else {
+                                legal_moves.push(Move::from_squares(Square { rank: 8, file: 'e' }, Square { rank: 8, file: 'c' }, None));
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            Color::White => {
+                for c in &self.castling_rights {
+                    match c {
+                        'K' => { // if the kings path is not in check -> the square f1(remove_checks handles this in engine.rs),
+                            //  and if there are no pieces in f1 and g1
+                            if self.get_piece_at_square(&Square { rank: 1, file: 'f' }) != None {
+                                continue;
+                            } else if self.get_piece_at_square(&Square { rank: 1, file: 'g' }) != None {
+                                continue;                                
+                            } else {
+                                legal_moves.push(Move::from_squares(Square { rank: 1, file: 'e' }, Square { rank: 1, file: 'g' }, None));
+                            }
+                        }
+                        'Q' => { // if the kings path is not in check -> the square d1, and if there are no pieces in d1, c1 and b1
+                            if self.get_piece_at_square(&Square { rank: 1, file: 'd' }) != None {
+                                continue;
+                            } else if self.get_piece_at_square(&Square { rank: 1, file: 'c' }) != None {
+                                continue;                                
+                            } else if self.get_piece_at_square(&Square { rank: 1, file: 'b' }) != None {
+                                continue;
+                            } else {
+                                legal_moves.push(Move::from_squares(Square { rank: 1, file: 'e' }, Square { rank: 1, file: 'c' }, None));
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn is_a_castle(&self, m: Move) -> bool {
+        let moving_piece = self.get_piece_at_square(&m.starting_square());
+
+        match moving_piece {
+            None => {
+                println!("PANICC should be moving a piece");
+                panic!("should be moving a piece");
+            },
+            Some(p) => {
+                if p.piece != Piece::King {
+                    return false;
+                }
+            }
+        }
+
+        let starting_square = m.starting_square();
+        let starting_file = starting_square.file;
+        let starting_rank = starting_square.rank;
+
+        let final_square = m.final_square();
+        let final_file = final_square.file;
+        let final_rank = final_square.rank;
+
+        if starting_rank == 1 && final_rank == 1 && starting_file == 'e' && final_file == 'g' {
+            true
+        } else if starting_rank == 1 && final_rank == 1 && starting_file == 'e' && final_file == 'c' {
+            true
+        } else if starting_rank == 8 && final_rank == 8 && starting_file == 'e' && final_file == 'g' {
+            true
+        } else if starting_rank == 8 && final_rank == 8 && starting_file == 'e' && final_file == 'c' {
+            true
+        } else {
+            false
+        }
+    }
+
     fn convert_promotions(&self, m: Move, valid_moves: &mut Vec<Move>) {
         let final_rank = m.final_square().rank;
 
@@ -802,7 +974,7 @@ fn file_to_num(c: char) -> u8 {
     }
 }
 
-fn num_to_file(n: u8) -> char {
+pub fn num_to_file(n: u8) -> char {
     if n < 8 {
         (b'a' + n) as char     // 0..=7
     } else {
