@@ -160,13 +160,13 @@ impl Engine {
         // todo!();
     }
 
-    fn simulate_move(&self, m: &Move, board: &mut Board) {
+    fn simulate_move(&self, m: &Move, board: &mut Board, color: &Color) {
         let mut moving_piece= None;
 
         let starting_square = m.starting_square();
         let final_square = m.final_square();
 
-        Self::promote_piece(&mut moving_piece, m, board, board.current_player);
+        Self::promote_piece(&mut moving_piece, m, board, *color);
 
         let final_piece = board.get_piece_at_square(&final_square);
 
@@ -364,7 +364,7 @@ impl Engine {
             let mut board_clone = board.clone();
             let is_a_castle = board_clone.is_a_castle(m);
 
-            self.simulate_move(&m, &mut board_clone);
+            self.simulate_move(&m, &mut board_clone, &color);
 
             let other_player = if color == Color::Black { Color::White } else { Color::Black };
             let other_player_legal_moves = board_clone.pseudo_legal_moves(&other_player);
@@ -470,7 +470,7 @@ impl Engine {
         for m in self.get_legal_moves(board, color) {
             let mut board_for_this_branch = board.clone();
             
-            self.simulate_move(&m, &mut board_for_this_branch);
+            self.simulate_move(&m, &mut board_for_this_branch, &color);
 
             // let branching_factor = self.get_legal_moves(&board_for_this_branch, next_color).len();
 
@@ -536,7 +536,7 @@ impl Engine {
         for m in self.get_legal_moves(board, color) {
             let mut board_for_this_branch = board.clone();
 
-            self.simulate_move(&m, &mut board_for_this_branch);
+            self.simulate_move(&m, &mut board_for_this_branch, &color);
 
             nodes += self.perft_aux(depth - 1, &mut board_for_this_branch,
             if color == Color::White { Color::Black } else { Color::White });
@@ -582,7 +582,7 @@ impl Engine {
 
         for m in legal_moves.iter() {
             let mut board_clone = self.board.clone();
-            self.simulate_move(&m, &mut board_clone);
+            self.simulate_move(&m, &mut board_clone, &self.current_player);
 
             let e = self.eval(&board_clone);
 
@@ -657,8 +657,8 @@ impl Engine {
     }
 }
 
-
-#[cfg(test)]
+//conditional compilation
+#[cfg(test)] // the entire test module is not compiled unless the command is cargo test
 mod tests {
     use super::*;
 
@@ -802,6 +802,136 @@ mod tests {
             let mut engine = Engine::new();
             engine.load_from_fen(vec!["8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8", "w", "-", "-", "0", "1"]);
             assert_eq!(11_030_083, engine.unit_perft(6));
+        }
+    }
+
+    mod pos_4 {
+        use crate::chess::engine;
+
+        use super::*;
+
+        #[test]
+        fn depth_1() {
+            let mut engine = Engine::new();
+            engine.load_from_fen(vec!["r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1", "w", "kq", "-", "0", "1"]);
+            assert_eq!(6, engine.unit_perft(1));
+        }
+
+        #[test]
+        fn depth_2() {
+            let mut engine = Engine::new();
+            engine.load_from_fen(vec!["r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1", "w", "kq", "-", "0", "1"]);
+            assert_eq!(264, engine.unit_perft(2));
+        }
+
+        #[test]
+        fn depth_3() {
+            let mut engine = Engine::new();
+            engine.load_from_fen(vec!["r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1", "w", "kq", "-", "0", "1"]);
+            assert_eq!(9_467, engine.unit_perft(3));
+        }
+
+        #[test]
+        fn depth_4() {
+            let mut engine = Engine::new();
+            engine.load_from_fen(vec!["r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1", "w", "kq", "-", "0", "1"]);
+            assert_eq!(422_333, engine.unit_perft(4));
+        }
+
+        #[test]
+        #[ignore = "to slow, but already tested and passed"]
+        fn depth_5() {
+            let mut engine = Engine::new();
+            engine.load_from_fen(vec!["r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1", "w", "kq", "-", "0", "1"]);
+            assert_eq!(15_833_292, engine.unit_perft(5));
+        }
+
+        #[test]
+        #[ignore = "to slow to test yet"]
+        fn depth_6() {
+            let mut engine = Engine::new();
+            engine.load_from_fen(vec!["r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1", "w", "kq", "-", "0", "1"]);
+            assert_eq!(706_045_033, engine.unit_perft(6));
+        }
+    }
+
+    mod pos_5 {
+        use super::*;
+
+        #[test]
+        fn depth_1() {
+            let mut engine = Engine::new();
+            engine.load_from_fen(vec!["rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R", "w", "KQ", "-", "1", "8"]);
+            assert_eq!(44, engine.unit_perft(1));
+        }
+
+        #[test]
+        fn depth_2() {
+            let mut engine = Engine::new();
+            engine.load_from_fen(vec!["rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R", "w", "KQ", "-", "1", "8"]);
+            assert_eq!(1_486, engine.unit_perft(2));
+        }
+
+        #[test]
+        fn depth_3() {
+            let mut engine = Engine::new();
+            engine.load_from_fen(vec!["rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R", "w", "KQ", "-", "1", "8"]);
+            assert_eq!(62_379, engine.unit_perft(3));
+        }
+
+        #[test]
+        fn depth_4() {
+            let mut engine = Engine::new();
+            engine.load_from_fen(vec!["rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R", "w", "KQ", "-", "1", "8"]);
+            assert_eq!(2_103_487, engine.unit_perft(4));
+        }
+
+        #[test]
+        #[ignore = "to slow, but already passed (took 5 min to run 89 milion positions)"]
+        fn depth_5() { 
+            let mut engine = Engine::new();
+            engine.load_from_fen(vec!["rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R", "w", "KQ", "-", "1", "8"]);
+            assert_eq!(89_941_194, engine.unit_perft(5));
+        }
+    }
+
+    mod pos_6 {
+        use super::*;
+
+        #[test]
+        fn depth_1() {
+            let mut engine = Engine::new();
+            engine.load_from_fen(vec!["r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1", "w", "-", "-", "0", "10"]);
+            assert_eq!(46, engine.unit_perft(1));
+        }
+
+        #[test]
+        fn depth_2() {
+            let mut engine = Engine::new();
+            engine.load_from_fen(vec!["r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1", "w", "-", "-", "0", "10"]);
+            assert_eq!(2_079, engine.unit_perft(2));
+        }
+
+        #[test]
+        fn depth_3() {
+            let mut engine = Engine::new();
+            engine.load_from_fen(vec!["r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1", "w", "-", "-", "0", "10"]);
+            assert_eq!(89_890, engine.unit_perft(3));
+        }
+
+        #[test]
+        fn depth_4() {
+            let mut engine = Engine::new();
+            engine.load_from_fen(vec!["r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1", "w", "-", "-", "0", "10"]);
+            assert_eq!(3_894_594, engine.unit_perft(4));
+        }
+
+        #[test]
+        #[ignore = "to slow to test yet"]
+        fn depth_5() {
+            let mut engine = Engine::new();
+            engine.load_from_fen(vec!["r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1", "w", "-", "-", "0", "10"]);
+            assert_eq!(164_075_551, engine.unit_perft(5));
         }
     }
 }
