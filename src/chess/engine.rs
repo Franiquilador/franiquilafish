@@ -29,9 +29,9 @@ pub struct PlayerTimes { // in miliseconds
     pub binc: i32,
 }
 
-
+/// **this renders as bold text in markdown in cargo doc**
 pub struct Engine {
-    is_running: bool,
+    pub is_running: bool, // this is the only field that apears in the cargo doc API documentation, because it is public
     game_state: GameState,
     color: Color,
     current_player: Color,
@@ -64,7 +64,7 @@ impl Engine {
         self.is_running = false;
     }
 
-    fn update_active_player(&mut self) {
+    fn update_active_player(&mut self) { // this function is not rendered in the docs (cargo doc) because it is private and not part of the API
         self.board.set_current_player_in_fen(&self.current_player);
         if let Color::Black = self.current_player {
             self.current_player = Color::White;
@@ -508,22 +508,21 @@ impl Engine {
         println!("------------------- finished perft -------------------");
     }
 
+    /// Runs perft at a single fixed `depth` without iterative deepening.
+    ///
+    /// Unlike [`perft`](Engine::perft), which runs from depth `1` up to `max_depth`,
+    /// this function evaluates **only** the specified depth in a single pass.
+    ///
+    /// # Arguments
+    /// * `depth` - The fixed depth at which to count leaf nodes.
+    ///
+    /// # Returns
+    /// The number of possible positions at the given depth.
     fn unit_perft(&self, depth: i32) -> i32 {
-        println!("starting unit perft at depth {depth}...");
         let mut board_clone = self.board.clone();
 
-        let start = std::time::Instant::now();
-
         let possible_positions = self.perft_aux(depth, &mut board_clone, self.current_player);
-        let duration = start.elapsed(); // not acurate because perft_aux does iterative deepening, and it does not account for time of previous
-
-        // moves generated per_second
-        let nodes_per_second = possible_positions as f64 / duration.as_secs_f64();
-            
-        println!("unit: {possible_positions} possible positions at depth {depth} generated in {:.3} seconds, ({:.0} nodes per second)", duration.as_secs_f64(), nodes_per_second);
-        
-        println!("------------------- finished perft -------------------");
-        
+       
         possible_positions
     }
 
@@ -655,5 +654,154 @@ impl Engine {
 
     pub fn set_color(&mut self, color: Color) {
         self.color = color;
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    mod startpos {
+        use super::*;
+
+        #[test]
+        fn depth_1() {
+            let engine = Engine::new();
+            assert_eq!(20, engine.unit_perft(1));
+        }
+
+        #[test]
+        fn depth_2() {
+            let engine = Engine::new();
+            assert_eq!(400, engine.unit_perft(2));
+        }
+
+        #[test]
+        fn depth_3() {
+            let engine = Engine::new();
+            assert_eq!(8_902, engine.unit_perft(3));
+        }
+
+        #[test]
+        fn depth_4() {// run cargo test -r -- --nocapture to capture the test output and the accurate perft benchmark (because it does not waste time with iterative deepening on lower depths)
+            let engine = Engine::new();
+
+            let start = std::time::Instant::now();
+            let positions = engine.unit_perft(4);
+            let duration = start.elapsed();
+
+            let nodes_per_second = positions as f64 / duration.as_secs_f64();
+            
+            assert_eq!(197_281, positions);
+            println!("{positions} positions at depth 4 (startpos) generated in {:.3} seconds, ({:.0} nodes per second)", duration.as_secs_f64(), nodes_per_second);
+        }
+
+        #[test]
+        fn depth_5() { // if this passes, all previous depths have passed
+            let engine = Engine::new();
+            assert_eq!(4_865_609, engine.unit_perft(5));
+        }
+
+        #[test]
+        #[ignore = "to slow to test yet, and i32 overflow"]
+        fn depth_6() { // if this passes, all previous depths have passed
+            let engine = Engine::new();
+            // assert_eq!(8_031_647_685, engine.unit_perft(6));
+        }
+    }
+
+    mod kiwipete {
+        use super::*;
+
+        #[test]
+        fn depth_1() {
+            let mut engine = Engine::new();
+            engine.load_from_fen(vec!["r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R", "w", "KQkq", "-", "0", "1"]);
+            assert_eq!(48, engine.unit_perft(1));
+        }
+
+        #[test]
+        fn depth_2() {
+            let mut engine = Engine::new();
+            engine.load_from_fen(vec!["r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R", "w", "KQkq", "-", "0", "1"]);
+            assert_eq!(2_039, engine.unit_perft(2));
+        }
+
+        #[test]
+        fn depth_3() {
+            let mut engine = Engine::new();
+            engine.load_from_fen(vec!["r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R", "w", "KQkq", "-", "0", "1"]);
+            assert_eq!(97_862, engine.unit_perft(3));
+        }
+
+        #[test]
+        fn depth_4() {
+            let mut engine = Engine::new();
+            engine.load_from_fen(vec!["r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R", "w", "KQkq", "-", "0", "1"]);
+            assert_eq!(4_085_603, engine.unit_perft(4));
+        }
+
+        #[test]
+        #[ignore = "to slow to test yet"]
+        fn depth_5() {
+            let mut engine = Engine::new();
+            engine.load_from_fen(vec!["r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R", "w", "KQkq", "-", "0", "1"]);
+            assert_eq!(193_690_690, engine.unit_perft(5));
+        }
+
+        #[test]
+        #[ignore = "to slow to test yet, and i32 overflow"]
+        fn depth_6() {
+            let mut engine = Engine::new();
+            engine.load_from_fen(vec!["r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R", "w", "KQkq", "-", "0", "1"]);
+            // assert_eq!(8_031_647_685, engine.unit_perft(6));
+        }
+    }
+
+    mod pos_3 { // position 3 from CPW perft results
+        use super::*;
+
+        #[test]
+        fn depth_1() {
+            let mut engine = Engine::new();
+            engine.load_from_fen(vec!["8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8", "w", "-", "-", "0", "1"]);
+            assert_eq!(14, engine.unit_perft(1));
+        }
+
+        #[test]
+        fn depth_2() {
+            let mut engine = Engine::new();
+            engine.load_from_fen(vec!["8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8", "w", "-", "-", "0", "1"]);
+            assert_eq!(191, engine.unit_perft(2));
+        }
+
+        #[test]
+        fn depth_3() {
+            let mut engine = Engine::new();
+            engine.load_from_fen(vec!["8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8", "w", "-", "-", "0", "1"]);
+            assert_eq!(2812, engine.unit_perft(3));
+        }
+
+        #[test]
+        fn depth_4() {
+            let mut engine = Engine::new();
+            engine.load_from_fen(vec!["8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8", "w", "-", "-", "0", "1"]);
+            assert_eq!(43_238, engine.unit_perft(4));
+        }
+
+        #[test]
+        fn depth_5() {
+            let mut engine = Engine::new();
+            engine.load_from_fen(vec!["8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8", "w", "-", "-", "0", "1"]);
+            assert_eq!(674_624, engine.unit_perft(5));
+        }
+
+        #[test]
+        fn depth_6() {
+            let mut engine = Engine::new();
+            engine.load_from_fen(vec!["8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8", "w", "-", "-", "0", "1"]);
+            assert_eq!(11_030_083, engine.unit_perft(6));
+        }
     }
 }
