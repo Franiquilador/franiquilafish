@@ -744,7 +744,7 @@ impl Board {
                                         && (starting_square.rank != 7) {
                                         false
                                     } else {
-                                        if (self.get_piece_at_square(&Square { rank: starting_square.rank - 1, file: starting_square.file }) != None) {
+                                        if self.get_piece_at_square(&Square { rank: starting_square.rank - 1, file: starting_square.file }) != None {
                                             false
                                         } else {
                                             true    
@@ -756,7 +756,7 @@ impl Board {
                                         && (starting_square.rank != 2) {
                                         false
                                     } else {
-                                        if (self.get_piece_at_square(&Square { rank: starting_square.rank + 1, file: starting_square.file }) != None) {
+                                        if self.get_piece_at_square(&Square { rank: starting_square.rank + 1, file: starting_square.file }) != None {
                                             false
                                         } else {
                                             true

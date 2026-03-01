@@ -488,7 +488,7 @@ impl Engine {
         return nodes;
     }
 
-    pub fn perft(&mut self, max_depth: i32) {
+    pub fn perft(&self, max_depth: i32) {
         println!("starting perft {max_depth}...");
         let mut board_clone = self.board.clone();
 
@@ -506,6 +506,25 @@ impl Engine {
             println!("{possible_positions} possible positions at depth {depth} generated in {:.3} seconds, ({:.0} nodes per second)", duration.as_secs_f64(), nodes_per_second);
         }
         println!("------------------- finished perft -------------------");
+    }
+
+    fn unit_perft(&self, depth: i32) -> i32 {
+        println!("starting unit perft at depth {depth}...");
+        let mut board_clone = self.board.clone();
+
+        let start = std::time::Instant::now();
+
+        let possible_positions = self.perft_aux(depth, &mut board_clone, self.current_player);
+        let duration = start.elapsed(); // not acurate because perft_aux does iterative deepening, and it does not account for time of previous
+
+        // moves generated per_second
+        let nodes_per_second = possible_positions as f64 / duration.as_secs_f64();
+            
+        println!("unit: {possible_positions} possible positions at depth {depth} generated in {:.3} seconds, ({:.0} nodes per second)", duration.as_secs_f64(), nodes_per_second);
+        
+        println!("------------------- finished perft -------------------");
+        
+        possible_positions
     }
 
     fn perft_aux(&self, depth: i32, board: &mut Board, color: Color) -> i32 { //max depth this iteration
