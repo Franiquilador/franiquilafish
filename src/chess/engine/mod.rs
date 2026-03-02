@@ -1,5 +1,6 @@
-use std::clone;
-use std::{fmt::DebugStruct, i32, mem::transmute, vec};
+use std::time::Instant;
+use std::{clone, i32};
+use std::{fmt::DebugStruct, mem::transmute, vec};
 use std::io::{stdout, Write};
 
 use crate::chess::board;
@@ -252,6 +253,8 @@ impl Engine {
                             }
                         }
                     }
+                } else if p.piece == Piece::King { // needed because in deep searches, the king is captured, and you cant try to castle and move an empty square
+                    board.remove_all_castling(&p.color);
                 }
             }
         }
@@ -545,39 +548,154 @@ impl Engine {
         return nodes;
     }
 
+    // planed time to spend in the next move in ms
+    fn calculate_time(&self, times: PlayerTimes) -> i32 {
+        match self.color { // always plan thinking there are still 40 moves to go
+            Color::Black => {
+                let remaining = times.btime;
+                remaining / 40
+            }
+            Color::White => {
+                let remaining = times.wtime;
+                remaining / 40
+            }
+        }
+    }
+
+    fn max_value(&self, depth: i32, board: Board) -> i32 {
+        let legal_moves = self.get_legal_moves(&board, Color::White); // child nodes/positions
+
+        if depth == 0 || legal_moves.is_empty() { // if there are no legal moves now, it is checkmate or stalemate
+            return self.eval(&board);
+        }
+
+        let mut best = i32::MIN;
+
+        for m in &legal_moves {
+            let mut board_clone = board.clone();
+
+            self.simulate_move(m, &mut board_clone, &Color::White); // do a move
+
+            let v = self.min_value(depth - 1, board_clone.clone());
+
+            if v > best { // for each move that we do, we return the one that is the most valuable for white
+                best = v;
+            }
+        }
+
+        best
+    }
+
+    fn min_value(&self, depth: i32, board: Board) -> i32 {
+        let legal_moves = self.get_legal_moves(&board, Color::Black); // child nodes/positions
+
+        if depth == 0 || legal_moves.is_empty() { // if there are no legal moves now, it is checkmate or stalemate
+            return self.eval(&board);
+        }
+
+        let mut best = i32::MAX;
+
+        for m in &legal_moves {
+            let mut board_clone = board.clone();
+
+            self.simulate_move(m, &mut board_clone, &Color::Black); // do a move/go down into a branch
+
+            let v = self.max_value(depth - 1, board_clone.clone());
+            if v < best { // for each move that we do, we return the one that is the most valuable for black
+                best = v;
+            }
+        }
+
+        best
+    }
+
+    fn get_best_move(&self, depth: i32, board: Board, maximizing_player: Color, eng_move_time: i32, start: Instant) -> Move {
+        let mut best_eval = match self.color {
+            Color::Black => i32::MAX,
+            Color::White => i32::MIN,
+        };
+
+        let legal_moves = self.get_legal_moves(&board, maximizing_player);
+
+        let mut best_move = *legal_moves.get(0).expect("stalemate or checkmate: no legal moves");
+
+        for m in &legal_moves {
+            let mut board_clone = board.clone();
+
+            self.simulate_move(m, &mut board_clone, &maximizing_player);
+
+            let eval = if maximizing_player == Color::White { // minimax eval for each of the moves, max calls min and min calls max
+                self.max_value(depth - 1, board_clone.clone())
+            } else {
+                self.min_value(depth - 1, board_clone.clone())
+            };
+
+            match maximizing_player {
+                Color::White => {
+                    if eval > best_eval {
+                        best_eval = eval;
+                        best_move = *m;
+                    }
+                },
+                Color::Black => {
+                    if eval < best_eval {
+                        best_eval = eval;
+                        best_move = *m;
+                    }
+                },
+            };
+            if start.elapsed().as_millis() > eng_move_time as u128 {
+                break;
+            }
+        }
+
+        best_move
+    }
+
     // returns the best move and updates the move counts on the boards
     pub fn search(&mut self, moves: Vec<String>, times: PlayerTimes, stop_flag: Arc<AtomicBool>) -> String {
-        // self.apply_moves(moves);
 
-        let board_clone = self.board.clone();
+        let eng_move_time: i32 = self.calculate_time(times);
+        let start = std::time::Instant::now();
 
-        let legal_moves = self.get_legal_moves(&board_clone, self.color); // get all legal moves from the current board
-        // println!("das1");
-        // stdout().flush().unwrap();
+        let mut depth = 1;
+
+        let mut best_move = String::new();
+        let mut b_m = None;
+        
+        let mut board_clone = self.board.clone();
+
+        while start.elapsed().as_millis() < eng_move_time as u128 /*&& eng_move_time > 0 */{
+
+            b_m = Some(self.get_best_move(depth, board_clone.clone(), self.color, eng_move_time, start));
+
+            best_move = b_m.unwrap().to_uci();
+
+            depth += 1;
+        }
+
+        /*
+        return best_move2;
+
+        //----------------------------------------------------------------------------------------------
+
+        let mut board_clone = self.board.clone();
+        let legal_moves = self.get_legal_moves(&board_clone, self.color);
         
         let mut best_eval = match self.color {
             Color::Black => i32::MAX,
             Color::White => i32::MIN,
         };
         let mut best_move = String::new();
-        // println!("das3");
-        // stdout().flush().unwrap();
 
         if !legal_moves.is_empty() {
             best_move = legal_moves[0].to_uci();
         } else {
             println!("PANICCCCCCCCCCCCCCCCCCC, draw? no legal moves that the engine knows");
             stdout().flush().unwrap();
-            // panic!("no legal moves, maybe draw?");
+            panic!("no legal moves, maybe draw?");
         }
-        // println!("das4");
-        // stdout().flush().unwrap();
 
-        // println!("{:?}", legal_moves.clone());
-        // stdout().flush().unwrap();
-
-        // println!("das2");
-        // stdout().flush().unwrap();
         let mut b_m = legal_moves.get(0).expect("no legal moves");
 
         for m in legal_moves.iter() {
@@ -598,17 +716,13 @@ impl Engine {
                     best_move = m.to_uci();
                 }
             }
-        }
+        }*/
 
-        let is_capture_or_pawn_move = self.is_capture_or_pawn_move(*b_m);
+        let is_capture_or_pawn_move = self.is_capture_or_pawn_move(b_m.unwrap());
 
         self.board.update_move_counts(self.color, is_capture_or_pawn_move);
 
-        // println!("das3");
-        // stdout().flush().unwrap();
-
-        // "f7f6".to_string()
-        self.move_piece(b_m); // apply engine move to the board
+        self.move_piece(&b_m.unwrap()); // apply engine move to the board
         best_move
     }
 
