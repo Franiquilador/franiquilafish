@@ -553,16 +553,22 @@ impl Engine {
         match self.color { // always plan thinking there are still 40 moves to go
             Color::Black => {
                 let remaining = times.btime;
-                remaining / 40
+                let time = (remaining / 40) + times.binc / 2; // add the increment
+                time.max(100)
             }
             Color::White => {
                 let remaining = times.wtime;
-                remaining / 40
+                let time = (remaining / 40) + times.winc / 2;
+                time.max(100)
             }
         }
     }
 
-    fn max_value(&self, depth: i32, board: Board) -> i32 {
+    fn max_value(&self, depth: i32, board: Board, start: Instant, eng_move_time: i32) -> i32 {
+        if start.elapsed().as_millis() > eng_move_time as u128 {
+            return self.eval(&board);
+        }
+
         let legal_moves = self.get_legal_moves(&board, Color::White); // child nodes/positions
 
         if depth == 0 || legal_moves.is_empty() { // if there are no legal moves now, it is checkmate or stalemate
@@ -576,7 +582,7 @@ impl Engine {
 
             self.simulate_move(m, &mut board_clone, &Color::White); // do a move
 
-            let v = self.min_value(depth - 1, board_clone.clone());
+            let v = self.min_value(depth - 1, board_clone.clone(), start, eng_move_time);
 
             if v > best { // for each move that we do, we return the one that is the most valuable for white
                 best = v;
@@ -586,7 +592,11 @@ impl Engine {
         best
     }
 
-    fn min_value(&self, depth: i32, board: Board) -> i32 {
+    fn min_value(&self, depth: i32, board: Board, start: Instant, eng_move_time: i32) -> i32 {
+        if start.elapsed().as_millis() > eng_move_time as u128 {
+            return self.eval(&board);
+        }
+
         let legal_moves = self.get_legal_moves(&board, Color::Black); // child nodes/positions
 
         if depth == 0 || legal_moves.is_empty() { // if there are no legal moves now, it is checkmate or stalemate
@@ -600,7 +610,7 @@ impl Engine {
 
             self.simulate_move(m, &mut board_clone, &Color::Black); // do a move/go down into a branch
 
-            let v = self.max_value(depth - 1, board_clone.clone());
+            let v = self.max_value(depth - 1, board_clone.clone(), start, eng_move_time);
             if v < best { // for each move that we do, we return the one that is the most valuable for black
                 best = v;
             }
@@ -625,9 +635,9 @@ impl Engine {
             self.simulate_move(m, &mut board_clone, &maximizing_player);
 
             let eval = if maximizing_player == Color::White { // minimax eval for each of the moves, max calls min and min calls max
-                self.max_value(depth - 1, board_clone.clone())
+                self.max_value(depth - 1, board_clone.clone(), start, eng_move_time)
             } else {
-                self.min_value(depth - 1, board_clone.clone())
+                self.min_value(depth - 1, board_clone.clone(), start, eng_move_time)
             };
 
             match maximizing_player {
@@ -663,16 +673,24 @@ impl Engine {
         let mut best_move = String::new();
         let mut b_m = None;
         
-        let mut board_clone = self.board.clone();
+        let legal_moves = self.get_legal_moves(&self.board, self.color);
 
-        while start.elapsed().as_millis() < eng_move_time as u128 /*&& eng_move_time > 0 */{
-
-            b_m = Some(self.get_best_move(depth, board_clone.clone(), self.color, eng_move_time, start));
-
-            best_move = b_m.unwrap().to_uci();
-
-            depth += 1;
+        if legal_moves.len() == 1 { // so that it does not do iterative deepening on 1 available move
+            b_m = legal_moves.first().copied();
+        } else if legal_moves.len() == 0 {
+            println!("panicccccccc, no legal moves in the search");
+            panic!("no legal moves");
+        } else {
+            let mut board_clone = self.board.clone();
+            
+            while start.elapsed().as_millis() < eng_move_time as u128 /*&& eng_move_time > 0 */{
+                b_m = Some(self.get_best_move(depth, board_clone.clone(), self.color, eng_move_time, start));
+                
+                depth += 1;
+            }
         }
+
+        best_move = b_m.unwrap().to_uci();
 
         /*
         return best_move2;
