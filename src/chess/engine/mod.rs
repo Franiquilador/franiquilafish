@@ -579,7 +579,6 @@ impl Engine {
         }
 
         let mut best = i32::MIN;
-
         // let mut alpha = alpha;
 
         for m in &legal_moves {
@@ -587,21 +586,27 @@ impl Engine {
 
             self.simulate_move(m, &mut board_clone, &Color::White); // do a move
 
-            let v = self.min_value(depth - 1, board_clone.clone(), start, eng_move_time, node_count);
+            let v = self.min_value(depth - 1, board_clone.clone(), start, eng_move_time, node_count/*, alpha, beta*/);
 
             if v > best { // for each move that we do, we return the one that is the most valuable for white
                 best = v;
             }
 
-            // if best > alpha {
-                // alpha = best;
-            // }
+            // se o beta (melhor opção do min, é menor ou igual do que o best deste node max (desta chamada de max_value))
+            // entao não vale a pena continuar pois este ramo nunca vai ser escolhido, (pois o min vai escolher o beta que era a sua melhor opção anterior)
+        //     if best >= beta { 
+        //         return best;
+        //     }
+
+        //     if best > alpha {
+        //         alpha = best;
+        //     }
         }
 
         best
     }
 
-    fn min_value(&self, depth: i32, board: Board, start: Instant, eng_move_time: i32, node_count: &mut u64/* , alpha: i32, beta: i32*/) -> i32 {
+    fn min_value(&self, depth: i32, board: Board, start: Instant, eng_move_time: i32, node_count: &mut u64/*, alpha: i32, beta: i32*/) -> i32 {
         if start.elapsed().as_millis() > eng_move_time as u128 {
             return self.eval(&board);
         }
@@ -622,10 +627,16 @@ impl Engine {
 
             self.simulate_move(m, &mut board_clone, &Color::Black); // do a move/go down into a branch
 
-            let v = self.max_value(depth - 1, board_clone.clone(), start, eng_move_time, node_count);
+            let v = self.max_value(depth - 1, board_clone.clone(), start, eng_move_time, node_count/*, alpha, beta*/);
             if v < best { // for each move that we do, we return the one that is the most valuable for black
                 best = v;
             }
+
+            // se a melhor opção deste nó min (desta chamada de min_value na arvore de pesquisa), é menor do que o alpha,
+            // entao este ramo nunca vai ser escolhido pois o best deste no seria sempre menor do que a melhor opção do max acima (o alpha)
+            // if best <= alpha {
+                // return best;
+            // }
 
             // if best < beta {
                 // beta = best;
@@ -648,6 +659,9 @@ impl Engine {
         let mut is_full_depth = true; // check if all the nodes up to this depth were searched, or if it stoped mid search
         let mut total_nodes: u64 = legal_moves.len() as u64;
 
+        let mut alpha = i32::MIN;
+        let mut beta = i32::MAX;
+
         for m in &legal_moves {
 
             if start.elapsed().as_millis() > eng_move_time as u128 {
@@ -660,9 +674,9 @@ impl Engine {
             self.simulate_move(m, &mut board_clone, &maximizing_player);
 
             let eval = if maximizing_player == Color::White { // minimax eval for each of the moves, max calls min and min calls max
-                self.max_value(depth - 1, board_clone.clone(), start, eng_move_time, &mut total_nodes/*, i32::MIN, i32::MAX*/)
-            } else {
-                self.min_value(depth - 1, board_clone.clone(), start, eng_move_time, &mut total_nodes/*, i32::MIN, i32::MAX*/)
+                self.min_value(depth - 1, board_clone.clone(), start, eng_move_time, &mut total_nodes/*, alpha, beta*/)
+            } else { // black just played, now its white to simulate a move
+                self.max_value(depth - 1, board_clone.clone(), start, eng_move_time, &mut total_nodes/* , alpha, beta*/)
             };
 
             match maximizing_player {
@@ -670,13 +684,19 @@ impl Engine {
                     if eval > best_eval {
                         best_eval = eval;
                         best_move = *m;
+                        // if best_eval > alpha {
+                            // alpha = best_eval;
+                        // };
                     }
                 },
                 Color::Black => {
                     if eval < best_eval {
                         best_eval = eval;
                         best_move = *m;
-                    }
+                        // if best_eval < beta {
+                            // beta = best_eval;
+                        // };
+                    };
                 },
             };
         }
