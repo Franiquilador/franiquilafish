@@ -564,7 +564,8 @@ impl Engine {
         }
     }
 
-    fn max_value(&self, depth: i32, board: Board, start: Instant, eng_move_time: i32) -> i32 {
+    // in a max node: we define alpha, and test beta
+    fn max_value(&self, depth: i32, board: Board, start: Instant, eng_move_time: i32/*, alpha: i32, beta: i32*/) -> i32 {
         if start.elapsed().as_millis() > eng_move_time as u128 {
             return self.eval(&board);
         }
@@ -577,6 +578,8 @@ impl Engine {
 
         let mut best = i32::MIN;
 
+        // let mut alpha = alpha;
+
         for m in &legal_moves {
             let mut board_clone = board.clone();
 
@@ -587,12 +590,16 @@ impl Engine {
             if v > best { // for each move that we do, we return the one that is the most valuable for white
                 best = v;
             }
+
+            // if best > alpha {
+                // alpha = best;
+            // }
         }
 
         best
     }
 
-    fn min_value(&self, depth: i32, board: Board, start: Instant, eng_move_time: i32) -> i32 {
+    fn min_value(&self, depth: i32, board: Board, start: Instant, eng_move_time: i32/* , alpha: i32, beta: i32*/) -> i32 {
         if start.elapsed().as_millis() > eng_move_time as u128 {
             return self.eval(&board);
         }
@@ -604,6 +611,7 @@ impl Engine {
         }
 
         let mut best = i32::MAX;
+        // let mut beta = beta;
 
         for m in &legal_moves {
             let mut board_clone = board.clone();
@@ -614,12 +622,16 @@ impl Engine {
             if v < best { // for each move that we do, we return the one that is the most valuable for black
                 best = v;
             }
+
+            // if best < beta {
+                // beta = best;
+            // }
         }
 
         best
     }
 
-    fn get_best_move(&self, depth: i32, board: Board, maximizing_player: Color, eng_move_time: i32, start: Instant) -> Move {
+    fn get_best_move(&self, depth: i32, board: Board, maximizing_player: Color, eng_move_time: i32, start: Instant) -> (Move, i32, bool) {
         let mut best_eval = match self.color {
             Color::Black => i32::MAX,
             Color::White => i32::MIN,
@@ -628,16 +640,24 @@ impl Engine {
         let legal_moves = self.get_legal_moves(&board, maximizing_player);
 
         let mut best_move = *legal_moves.get(0).expect("stalemate or checkmate: no legal moves");
+        
+        let mut is_full_depth = true; // check if all the nodes up to this depth were searched, or if it stoped mid search
 
         for m in &legal_moves {
+
+            if start.elapsed().as_millis() > eng_move_time as u128 {
+                is_full_depth = false; // there was still another legal move branch to consider, and the search was cancelled because of time
+                break;
+            }
+
             let mut board_clone = board.clone();
 
             self.simulate_move(m, &mut board_clone, &maximizing_player);
 
             let eval = if maximizing_player == Color::White { // minimax eval for each of the moves, max calls min and min calls max
-                self.max_value(depth - 1, board_clone.clone(), start, eng_move_time)
+                self.max_value(depth - 1, board_clone.clone(), start, eng_move_time/*, i32::MIN, i32::MAX*/)
             } else {
-                self.min_value(depth - 1, board_clone.clone(), start, eng_move_time)
+                self.min_value(depth - 1, board_clone.clone(), start, eng_move_time/*, i32::MIN, i32::MAX*/)
             };
 
             match maximizing_player {
@@ -654,12 +674,9 @@ impl Engine {
                     }
                 },
             };
-            if start.elapsed().as_millis() > eng_move_time as u128 {
-                break;
-            }
         }
 
-        best_move
+        (best_move, best_eval, is_full_depth)
     }
 
     // returns the best move and updates the move counts on the boards
@@ -671,7 +688,7 @@ impl Engine {
         let mut depth = 1;
 
         let mut best_move = String::new();
-        let mut b_m = None;
+        let mut b_m: Option<Move> = None;
         
         let legal_moves = self.get_legal_moves(&self.board, self.color);
 
@@ -684,9 +701,28 @@ impl Engine {
             let mut board_clone = self.board.clone();
             
             while start.elapsed().as_millis() < eng_move_time as u128 /*&& eng_move_time > 0 */{
-                b_m = Some(self.get_best_move(depth, board_clone.clone(), self.color, eng_move_time, start));
+                let mut eval: i32;
+                let mut is_full_depth: bool;
+
+                match self.get_best_move(depth, board_clone.clone(), self.color, eng_move_time, start) {
+                    (m, e, i_f_d) => {
+                        b_m = Some(m);
+                        eval = e;
+                        is_full_depth = i_f_d
+                    }
+                };
+
+                if self.color == Color::Black {
+                    eval = -eval;
+                }
                 
-                depth += 1;
+                // #[cfg(feature = "uci_info")]
+                if is_full_depth { // check if all the nodes up to this depth were searched, or if it stoped mid search
+                    println!("info depth {depth} score cp {eval}");
+                }
+
+                
+                depth += 1; // iterative deepening
             }
         }
 

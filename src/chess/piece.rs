@@ -23,22 +23,22 @@ impl ChessPiece {
         match self.color {
             Color::White => {
                 match self.piece {
-                    Piece::Rook => 5,
-                    Piece::Knight => 3,
-                    Piece::Bishop => 3,
-                    Piece::Queen => 3,
+                    Piece::Rook => 500,
+                    Piece::Knight => 300,
+                    Piece::Bishop => 300,
+                    Piece::Queen => 900,
                     Piece::King => 0,
-                    Piece::Pawn => 1,
+                    Piece::Pawn => 100,
                 }
             },
             Color::Black => {
                 match self.piece {
-                    Piece::Rook => -5,
-                    Piece::Knight => -3,
-                    Piece::Bishop => -3,
-                    Piece::Queen => -3,
+                    Piece::Rook => -500,
+                    Piece::Knight => -300,
+                    Piece::Bishop => -300,
+                    Piece::Queen => -900,
                     Piece::King => 0,
-                    Piece::Pawn => -1,
+                    Piece::Pawn => -100,
                 }
             },
         }

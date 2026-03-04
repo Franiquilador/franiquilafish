@@ -6,3 +6,6 @@ authors = ["Francisco Figueiredo franfmgf@gmail.com"]
 repository = "https://github.com/Franiquilador/franiquilafish"
 
 [dependencies]
+
+# [features]
+# uci_info = []
