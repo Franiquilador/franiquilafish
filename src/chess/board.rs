@@ -966,7 +966,7 @@ impl Board {
     }
 }
 
-fn file_to_num(c: char) -> u8 {
+pub fn file_to_num(c: char) -> u8 {
     if ('a'..='h').contains(&c) {
         c as u8 - b'a'          // 0..=7
     } else {

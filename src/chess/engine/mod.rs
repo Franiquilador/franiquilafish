@@ -726,35 +726,38 @@ impl Engine {
             let mut board_clone = self.board.clone();
             
             while start.elapsed().as_millis() < eng_move_time as u128 /*&& eng_move_time > 0 */{
-                let mut eval: i32;
+                let mut eval: i32 = -1;
                 let mut is_full_depth: bool;
 
-                let start = std::time::Instant::now();
+                let search_start = std::time::Instant::now();
                 let mut duration_ms;
-                let mut nodes: u64;
+                let mut nodes: u64 = 0;
                 match self.get_best_move(depth, board_clone.clone(), self.color, eng_move_time, start) {
                     (m, e, i_f_d, n) => {
-                        duration_ms = start.elapsed().as_millis();
-                        b_m = Some(m);
-                        eval = e;
+                        duration_ms = search_start.elapsed().as_millis();
+                        
                         is_full_depth = i_f_d;
-                        nodes = n;
+                        if is_full_depth {
+                            nodes = n;
+                            b_m = Some(m);
+                            eval = e;
+                        }
                     }
-                };
-
-                if self.color == Color::Black {
-                    eval = -eval;
-                }
-
-                // its safer to have the duration > 0.0 check because on lower depths duration can be close to 0, and float division by 0 can be problematic
-                let nps = if duration_ms > 0 { 
-                    (nodes as u128) * 1000 / duration_ms 
-                } else { 
-                    0
                 };
                 
                 // #[cfg(feature = "uci_info")]
                 if is_full_depth { // check if all the nodes up to this depth were searched, or if it stoped mid search
+                    if self.color == Color::Black {
+                        eval = -eval;
+                    }
+
+                    // its safer to have the duration > 0.0 check because on lower depths duration can be close to 0, and float division by 0 can be problematic
+                    let nps = if duration_ms > 0 { 
+                        (nodes as u128) * 1000 / duration_ms 
+                    } else { 
+                        0
+                    };
+
                     println!("info depth {depth} time {duration_ms} nodes {nodes} score cp {eval} nps {nps}");
                 };
                 
@@ -838,21 +841,26 @@ impl Engine {
     }
 
     fn eval(&self, board: &Board) -> i32 {
-        // println!("das6");
-        // stdout().flush().unwrap();
         let mut eval = 0;
-        for row in board.get_pieces() {
-            for p in row {
+        for (i, row) in board.get_pieces().iter().enumerate() {
+            for (j, p) in row.iter().enumerate() {
                 let is_white = true;
                 match p {
                     None => continue,
-                    Some(piece) => eval += piece.value(),
+                    Some(piece) => {
+                        if piece.piece == Piece::Pawn && board.get_en_passant().is_some() {
+                            let ep_square = board.get_en_passant().unwrap();
+
+                            if ep_square.rank == (i as i32) + 1 && board::file_to_num(ep_square.file) == j as u8 {
+                                continue;
+                            }
+                        }
+                        eval += piece.value();
+                    },
                 }
             }
         }
 
-        // println!("das7");
-        // stdout().flush().unwrap();
         eval
     }
 
