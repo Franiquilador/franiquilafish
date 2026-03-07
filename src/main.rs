@@ -8,7 +8,8 @@ use std::{io::{self, Write, stdin}, sync::mpsc::{Receiver, Sender}};
 
 use std::thread;
 use std::sync::mpsc;
-use std::sync::{Arc, Mutex, atomic::AtomicBool};
+use std::sync::{Arc, Mutex, atomic::{Ordering, AtomicBool}};
+
 
 enum Command {
     Help,
@@ -196,7 +197,7 @@ fn main_uci_thread(producer: Sender<String>, stop: Arc<AtomicBool>) {
             "ucinewgame" => {
                 let _ = producer.send("ucinewgame".to_string());
             },
-            "stop" => { stop.store(true, std::sync::atomic::Ordering::Relaxed); },  //atomicbool operation guarantees the flag is updated by only one thread at a time, since the flag is shared between threads
+            "stop" => { stop.store(true, Ordering::Relaxed); },  //atomicbool operation guarantees the flag is updated by only one thread at a time, since the flag is shared between threads
             "quit" => break,
             line => {
                 producer.send(line.to_string());
@@ -278,6 +279,8 @@ fn search_thread(stop_clone: Arc<AtomicBool>, consumer: Receiver<String>) {
                         engine.apply_moves(moves.clone(), is_fen);// apply oponents moves
                     },
                     "go" => {
+                        stop_clone.store(false, Ordering::Relaxed); // reset the stop command in a new search
+
                         let wtime = pairs
                         .find(|window| window[0] == "wtime")
                         .and_then(|window| window[1].parse::<i32>().ok())
@@ -304,6 +307,10 @@ fn search_thread(stop_clone: Arc<AtomicBool>, consumer: Receiver<String>) {
                                     winc: winc,
                                     binc: binc,
                                 };
+                        let mut time = None; // we assume go infinite was sent until proven otherwise
+                        if btime != 0 && wtime != 0 { 
+                            time = Some(times);
+                        }
 
                         // let color = match moves.len() % 2 == 0 { // engine color
                             // true => Color::White,
@@ -321,7 +328,7 @@ fn search_thread(stop_clone: Arc<AtomicBool>, consumer: Receiver<String>) {
                         // println!("das");
                         // stdout().flush().unwrap();
 
-                        let best_move = engine.search(moves.clone(), times, Arc::clone(&stop_clone));
+                        let best_move = engine.search(moves.clone(), time, Arc::clone(&stop_clone));
                             
                         print!("bestmove {best_move}\n");
                         stdout().flush().unwrap();

@@ -4,8 +4,8 @@ It is less rigorous than SPRT
 
 SPRT: (Sequential Probability Ratio Test)
 elo0 and elo1 are the two theories being tested:
-elo0=0 - the engines are equal (0 Elo difference) - H0 hypothesis
-elo1=5 - one engine is better by 5 Elo - H1 hypothesis
+elo0=0 - engine1 is not an improvement over the other (look at the Elo: ... with the margin of error) - H0 hypothesis
+elo1=5 - engine1 is better by 5 Elo - H1 hypothesis
 
 alpha and beta are how often we're okay with being wrong:
 alpha=0.05 - you accept a 5% chance of being told "Engine1 is better" when they're actually equal (false alarm)
@@ -19,7 +19,7 @@ Since the entire range is above 0, this is actually starting to look like a real
 
 LLR - Log Likelihood Latio
 the percentage after LLR 41.8% - how far it is toward a conclusion (0% = just started, 100% = done)
-lbound -2.94 - if llr hits this → H0 accepted (engines are equal)
+lbound -2.94 - if llr hits this → H0 accepted (engines1 is not an improvement, look at the Elo: ... with the margin of error)
 ubound 2.94 - if llr hits this → H1 accepted (one is better)
 
 Don't set concurrency higher than half of the number of cpu cores/threads so that the engines dont starve each other of cpu time, making the results inacurate. For my vitus it can be maximum 8

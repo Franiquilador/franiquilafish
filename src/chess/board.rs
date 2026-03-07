@@ -604,7 +604,7 @@ impl Board {
 
                 match piece_at_ghost {
                     None => {
-                        self.update_square(None, &s); // remove the temporary en passant target piece
+                        // self.update_square(None, &s); // remove the temporary en passant target piece
                     },
                     Some(p) => {
                         if p.color == ghost_color {
@@ -1178,7 +1178,7 @@ impl Board {
                 match cp {
                     None => {
                         println!("PANICC, should be a piece at the square we were removing a piece from");
-                        panic!("should be a piece at the square we were removing a piece from");
+                        // panic!("should be a piece at the square we were removing a piece from");
                     }
                     Some(p) => {
                         match (p.piece, p.color) {

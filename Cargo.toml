@@ -10,3 +10,6 @@ rand = "0.10"
 
 # [features]
 # uci_info = []
+
+[profile.release]
+overflow-checks = true

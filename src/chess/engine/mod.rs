@@ -1,3 +1,4 @@
+use core::panic::PanicInfo;
 use std::time::Instant;
 use std::{clone, i32};
 use std::{fmt::DebugStruct, mem::transmute, vec};
@@ -7,7 +8,7 @@ use crate::chess::board;
 use crate::chess::piece::{ChessPiece, Piece};
 use board::Board;
 use crate::chess::move_square::{Move, Square};
-use std::sync::{Arc, Mutex, atomic::AtomicBool};
+use std::sync::{Arc, Mutex, atomic::{Ordering, AtomicBool}};
 use crate::chess::move_square::Promotion;
 
 use rand::{RngExt, SeedableRng};
@@ -730,7 +731,7 @@ impl Engine {
     }
 
     // planed time to spend in the next move in ms
-    fn calculate_time(&self, times: PlayerTimes) -> i32 {
+    fn calculate_time(&self, times: &PlayerTimes) -> i32 {
         match self.color { // always plan thinking there are still 40 moves to go
             Color::Black => {
                 let remaining = times.btime;
@@ -779,7 +780,8 @@ impl Engine {
         eng_move_time: i32, 
         node_count: &mut u64, 
         alpha: i32, beta: i32, 
-        board_history: Vec<u64>, ply: i32) -> i32 {
+        board_history: Vec<u64>, ply: i32,
+        stop_flag: Arc<AtomicBool>) -> i32 {
 
         *node_count += 1;
 
@@ -798,8 +800,14 @@ impl Engine {
             return self.eval(&board);
         }
 
-        if start.elapsed().as_millis() > eng_move_time as u128 {
-            return self.eval(&board);
+        if eng_move_time > 0 {
+            if start.elapsed().as_millis() > eng_move_time as u128 || stop_flag.load(Ordering::Relaxed) {
+                return self.eval(&board);
+            }
+        } else if eng_move_time == 0 { // go infinite
+            if stop_flag.load(Ordering::Relaxed) {
+                return self.eval(&board);
+            }
         }
 
         let mut best = i32::MIN;
@@ -815,7 +823,11 @@ impl Engine {
 
             board_history.push(board_clone.zobrist_hash);
 
-            let v = self.min_value(depth - 1, board_clone.clone(), start, eng_move_time, node_count, alpha, beta, board_history.clone(), ply + 1);
+            let v = self.min_value(depth - 1, board_clone.clone(), start, eng_move_time, node_count, 
+            alpha, beta, 
+            board_history.clone(), 
+            ply + 1,
+            Arc::clone(&stop_flag));
 
             board_history.pop();
 
@@ -841,7 +853,8 @@ impl Engine {
         eng_move_time: i32, 
         node_count: &mut u64, 
         alpha: i32, beta: i32, 
-        board_history: Vec<u64>, ply: i32) -> i32 {
+        board_history: Vec<u64>, ply: i32,
+        stop_flag: Arc<AtomicBool>) -> i32 {
 
         *node_count += 1;
 
@@ -860,9 +873,16 @@ impl Engine {
             return self.eval(&board);
         }
 
-        if start.elapsed().as_millis() > eng_move_time as u128 {
-            return self.eval(&board);
+        if eng_move_time > 0 {
+            if start.elapsed().as_millis() > eng_move_time as u128 || stop_flag.load(Ordering::Relaxed) {
+                return self.eval(&board);
+            }
+        } else if eng_move_time == 0 { // go infinite
+            if stop_flag.load(Ordering::Relaxed) {
+                return self.eval(&board);
+            }
         }
+        
 
         let mut best = i32::MAX;
         let mut beta = beta;
@@ -876,7 +896,12 @@ impl Engine {
 
             board_history.push(board_clone.zobrist_hash);
 
-            let v = self.max_value(depth - 1, board_clone.clone(), start, eng_move_time, node_count, alpha, beta, board_history.clone(), ply + 1);
+            let v = self.max_value(depth - 1, board_clone.clone(), start, eng_move_time, node_count, 
+            alpha, beta, 
+            board_history.clone(), 
+            ply + 1,
+            Arc::clone(&stop_flag));
+
             if v < best { // for each move that we do, we return the one that is the most valuable for black
                 best = v;
             }
@@ -897,18 +922,26 @@ impl Engine {
         best
     }
 
-    fn get_best_move(&self, depth: i32, board: Board, maximizing_player: Color, eng_move_time: i32, start: Instant) -> (Move, i32, bool, u64) {
+    fn get_best_move(&self, depth: i32, board: Board, 
+        maximizing_player: Color, 
+        eng_move_time: i32, 
+        start: Instant, 
+        prev_bm: Move, 
+        stop_flag: Arc<AtomicBool>) -> (Move, i32, bool, u64) {
         let mut best_eval = match self.color {
             Color::Black => i32::MAX,
             Color::White => i32::MIN,
         };
 
-        let legal_moves = self.get_legal_moves(&board, maximizing_player);
+        let mut legal_moves = self.get_legal_moves(&board, maximizing_player);
+
+        self.order_moves(&mut legal_moves, prev_bm); 
 
         let mut best_move = *legal_moves.get(0).expect("stalemate or checkmate: no legal moves");
         
         let mut is_full_depth = true; // check if all the nodes up to this depth were searched, or if it stoped mid search
-        let mut total_nodes: u64 = legal_moves.len() as u64;
+        // let mut total_nodes: u64 = legal_moves.len() as u64;
+        let mut total_nodes: u64 = 0;
 
         let mut alpha = i32::MIN;
         let mut beta = i32::MAX;
@@ -919,9 +952,16 @@ impl Engine {
 
         for m in &legal_moves {
 
-            if start.elapsed().as_millis() > eng_move_time as u128 {
-                is_full_depth = false; // there was still another legal move branch to consider, and the search was cancelled because of time
-                break;
+            if eng_move_time > 0 {
+                if start.elapsed().as_millis() > eng_move_time as u128 || stop_flag.load(Ordering::Relaxed) {
+                    is_full_depth = false; // there was still another legal move branch to consider, and the search was cancelled because of time
+                    break;
+                }
+            } else if eng_move_time == 0 { // go infinite
+                if stop_flag.load(Ordering::Relaxed) {
+                    is_full_depth = false; // there was still another legal move branch to consider, and the search was cancelled because of time
+                    break;
+                }
             }
 
             let mut board_clone = board.clone();
@@ -942,7 +982,8 @@ impl Engine {
                     alpha, 
                     beta,
                     board_hist_clone.clone(),
-                    ply
+                    ply,
+                    Arc::clone(&stop_flag)
                 )
             } else { // black just played, now its white to simulate a move
                 self.max_value(
@@ -953,7 +994,8 @@ impl Engine {
                     alpha, 
                     beta,
                     board_hist_clone.clone(),
-                    ply
+                    ply,
+                    Arc::clone(&stop_flag)
                 )
             };
 
@@ -984,10 +1026,64 @@ impl Engine {
         (best_move, best_eval, is_full_depth, total_nodes)
     }
 
-    // returns the best move and updates the move counts on the boards
-    pub fn search(&mut self, moves: Vec<String>, times: PlayerTimes, stop_flag: Arc<AtomicBool>) -> String {
+    fn search_aux(&self, depth: &mut i32/*, board_clone: Board*/, stop_flag: Arc<AtomicBool>, eng_move_time: i32,
+        start: Instant,
+        b_m: &mut Option<Move>,
+        info_printed: &mut bool
+    ) {
+        let mut eval: i32 = -1;
+        let mut is_full_depth: bool;
+                    
+        let search_start = std::time::Instant::now();
+        let mut duration_ms;
+        let mut nodes: u64 = 0;
 
-        let eng_move_time: i32 = self.calculate_time(times);
+        match self.get_best_move(*depth, self.board.clone(), self.color, 
+        eng_move_time, start, b_m.unwrap(), Arc::clone(&stop_flag)) {
+            (m, e, i_f_d, n) => {
+                duration_ms = search_start.elapsed().as_millis();
+                            
+                is_full_depth = i_f_d;
+                if is_full_depth { // if it was not stoped mid search
+                    nodes = n;
+                    *b_m = Some(m);
+                    eval = e;
+                    *info_printed = true;
+                }
+            }
+        };
+                    
+        // #[cfg(feature = "uci_info")]
+        if is_full_depth { // check if all the nodes up to this depth were searched, or if it stoped mid search
+            if self.color == Color::Black {
+                eval = -eval;
+            }
+
+            // its safer to have the duration > 0.0 check because on lower depths duration can be close to 0, and float division by 0 can be problematic
+            let nps = if duration_ms > 0 { 
+                (nodes as u128) * 1000 / duration_ms 
+            } else { 
+                0
+            };
+
+            println!("info depth {depth} time {duration_ms} nodes {nodes} score cp {eval} nps {nps}");
+        };
+                              
+        *depth += 1; // iterative deepening
+    }
+    // returns the best move and updates the move counts on the boards
+    pub fn search(&mut self, moves: Vec<String>, times: Option<PlayerTimes>, stop_flag: Arc<AtomicBool>) -> String {
+        let mut eng_move_time: i32 = 0;
+
+        match times {
+            None => {// search infinitely until the stop flag
+
+            }
+            Some(ref t) => {
+                eng_move_time = self.calculate_time(t);
+            }
+        }
+         
         let start = std::time::Instant::now();
 
         let mut depth = 1;
@@ -1012,55 +1108,28 @@ impl Engine {
             b_m = legal_moves.first().copied(); // so that it has any move and is not None if the time is super low, and the games do not stall in fastchess
             let mut info_printed = false; // to remove warnings in fastchess: before saying bestmove, the engine is expected to always print a line with eval info, so even if is_full_depth is false for depth 1, info must be printed.
 
-            let mut board_clone = self.board.clone();// to not clone it more than once between diferent depths of iterative deepening
+            // let mut board_clone = self.board.clone();// to not clone it more than once between diferent depths of iterative deepening
             
-            //always has to search at least depth 1 to print info to the guis, otherwise we get a warning from fastchess
-            while start.elapsed().as_millis() < eng_move_time as u128 || depth == 1 /*&& eng_move_time > 0 */{
-                let mut eval: i32 = -1;
-                let mut is_full_depth: bool;
-
-                
-                let search_start = std::time::Instant::now();
-                let mut duration_ms;
-                let mut nodes: u64 = 0;
-                match self.get_best_move(depth, board_clone.clone(), self.color, eng_move_time, start) {
-                    (m, e, i_f_d, n) => {
-                        duration_ms = search_start.elapsed().as_millis();
-                        
-                        is_full_depth = i_f_d;
-                        if is_full_depth {
-                            nodes = n;
-                            b_m = Some(m);
-                            eval = e;
-                            info_printed = true;
-                        }
-                    }
-                };
-                
-                // #[cfg(feature = "uci_info")]
-                if is_full_depth { // check if all the nodes up to this depth were searched, or if it stoped mid search
-                    if self.color == Color::Black {
-                        eval = -eval;
-                    }
-
-                    // its safer to have the duration > 0.0 check because on lower depths duration can be close to 0, and float division by 0 can be problematic
-                    let nps = if duration_ms > 0 { 
-                        (nodes as u128) * 1000 / duration_ms 
-                    } else { 
-                        0
-                    };
-
-                    println!("info depth {depth} time {duration_ms} nodes {nodes} score cp {eval} nps {nps}");
-                };
-
-                
-                
-                depth += 1; // iterative deepening
+            if times.is_some() {
+                //always has to search at least depth 1 to print info to the guis, otherwise we get a warning from fastchess
+                while (start.elapsed().as_millis() < eng_move_time as u128 && !stop_flag.load(Ordering::Relaxed)) || depth == 1 {
+                    self.search_aux(&mut depth, Arc::clone(&stop_flag), 
+                    eng_move_time, start, 
+                    &mut b_m, &mut info_printed)
+                }
+            } else {// go infinite
+                while !stop_flag.load(Ordering::Relaxed) || depth == 1 {
+                    self.search_aux(&mut depth, Arc::clone(&stop_flag), 
+                    eng_move_time, start, 
+                    &mut b_m, &mut info_printed)
+                }
             }
 
+            let mut b_clone = self.board.clone();
+
             if !info_printed {
-                self.simulate_move(&b_m.unwrap(), &mut board_clone, &self.color);
-                let eval = if self.color == Color::Black { -self.eval(&board_clone) } else { self.eval(&board_clone) };
+                self.simulate_move(&b_m.unwrap(), &mut b_clone, &self.color);
+                let eval = if self.color == Color::Black { -self.eval(&b_clone) } else { self.eval(&b_clone) };
                 println!("info depth 1 score cp {eval} nodes 1 time 0 nps 0");
             };
         }
@@ -1121,6 +1190,16 @@ impl Engine {
         // self.board_history.push(self.board.zobrist_hash);
 
         best_move
+    }
+
+    // orders best moves to be looked at first to improve alpha beta pruning
+    fn order_moves(&self, legal_moves: &mut Vec<Move>, prev_bm: Move) {
+        if let Some(pos) = legal_moves.iter().position(|x| *x == prev_bm) {
+            legal_moves.swap(0, pos);
+        } else {
+            println!("PANNIC, previous best move should still be a legal move");
+            // panic!("previous best move should still be a legal move")
+        }
     }
 
     fn is_three_fold_draw(hash: u64, board_history: &Vec<u64>) -> bool {
