@@ -497,6 +497,12 @@ impl Engine {
     fn get_legal_moves(&self, board: &Board, color: Color) -> Vec<Move> {
         let mut pseudo_legal_moves = board.pseudo_legal_moves(&color);
         self.remove_checks(&mut pseudo_legal_moves, color, board);
+        
+        /*println!("Legal moves for {:?}:", color);
+        for m in &pseudo_legal_moves {
+            println!("  {}", m.to_uci());
+        } */
+
         pseudo_legal_moves // become legal after removing moves that leave the king in check
     }
 
@@ -769,10 +775,11 @@ impl Engine {
     }
 
     // in a max node: we define alpha, and test beta
-    fn max_value(&self, depth: i32, board: Board, start: Instant, eng_move_time: i32, node_count: &mut u64, alpha: i32, beta: i32, board_history: Vec<u64>) -> i32 {
-        if start.elapsed().as_millis() > eng_move_time as u128 {
-            return self.eval(&board);
-        }
+    fn max_value(&self, depth: i32, board: Board, start: Instant, 
+        eng_move_time: i32, 
+        node_count: &mut u64, 
+        alpha: i32, beta: i32, 
+        board_history: Vec<u64>, ply: i32) -> i32 {
 
         *node_count += 1;
 
@@ -780,13 +787,17 @@ impl Engine {
 
         if legal_moves.is_empty() { // if there are no legal moves now, it is checkmate or stalemate
             if self.is_king_in_check(&board, &Color::White) { // check if white king was checkmated
-                    return -1_000_000; // Black wins, value close to infinity for normal play: not i32::MIN to not risk overflow
+                    return -1_000_000 + ply; // Black wins, value close to infinity for normal play: not i32::MIN to not risk overflow
             } else {
                 return 0; // stalemate draw
             }
         } else if Self::is_three_fold_draw(board.zobrist_hash, &board_history) {
             return 0;
         } else if depth == 0 {
+            return self.eval(&board);
+        }
+
+        if start.elapsed().as_millis() > eng_move_time as u128 {
             return self.eval(&board);
         }
 
@@ -803,7 +814,7 @@ impl Engine {
 
             board_history.push(board_clone.zobrist_hash);
 
-            let v = self.min_value(depth - 1, board_clone.clone(), start, eng_move_time, node_count, alpha, beta, board_history.clone());
+            let v = self.min_value(depth - 1, board_clone.clone(), start, eng_move_time, node_count, alpha, beta, board_history.clone(), ply + 1);
 
             board_history.pop();
 
@@ -825,10 +836,11 @@ impl Engine {
         best
     }
 
-    fn min_value(&self, depth: i32, board: Board, start: Instant, eng_move_time: i32, node_count: &mut u64, alpha: i32, beta: i32, board_history: Vec<u64>) -> i32 {
-        if start.elapsed().as_millis() > eng_move_time as u128 {
-            return self.eval(&board);
-        }
+    fn min_value(&self, depth: i32, board: Board, start: Instant, 
+        eng_move_time: i32, 
+        node_count: &mut u64, 
+        alpha: i32, beta: i32, 
+        board_history: Vec<u64>, ply: i32) -> i32 {
 
         *node_count += 1;
 
@@ -836,13 +848,17 @@ impl Engine {
 
         if legal_moves.is_empty() { // if there are no legal moves now, it is checkmate or stalemate
             if self.is_king_in_check(&board, &Color::Black) { // check if black king was checkmated
-                return 1_000_000; // White wins
+                return 1_000_000 - ply; // White wins
             } else {
                 return 0; // stalemate draw
             }
         } else if Self::is_three_fold_draw(board.zobrist_hash, &board_history) {
             return 0;
         } else if depth == 0 {
+            return self.eval(&board);
+        }
+
+        if start.elapsed().as_millis() > eng_move_time as u128 {
             return self.eval(&board);
         }
 
@@ -858,7 +874,7 @@ impl Engine {
 
             board_history.push(board_clone.zobrist_hash);
 
-            let v = self.max_value(depth - 1, board_clone.clone(), start, eng_move_time, node_count, alpha, beta, board_history.clone());
+            let v = self.max_value(depth - 1, board_clone.clone(), start, eng_move_time, node_count, alpha, beta, board_history.clone(), ply + 1);
             if v < best { // for each move that we do, we return the one that is the most valuable for black
                 best = v;
             }
@@ -897,6 +913,8 @@ impl Engine {
 
         let mut board_hist_clone = self.board_history.clone();
 
+        let ply = 1; // number of moves from the root, used to prefer shorter forced mates
+
         for m in &legal_moves {
 
             if start.elapsed().as_millis() > eng_move_time as u128 {
@@ -921,7 +939,8 @@ impl Engine {
                     &mut total_nodes, 
                     alpha, 
                     beta,
-                    board_hist_clone.clone()
+                    board_hist_clone.clone(),
+                    ply
                 )
             } else { // black just played, now its white to simulate a move
                 self.max_value(
@@ -931,7 +950,8 @@ impl Engine {
                     &mut total_nodes, 
                     alpha, 
                     beta,
-                    board_hist_clone.clone()
+                    board_hist_clone.clone(),
+                    ply
                 )
             };
 
@@ -1135,12 +1155,12 @@ impl Engine {
                         }
                         eval += piece.value();
 
-                        if (j == 3 || j == 4) && (i == 3 || i == 4) { // bonus for being in the 4 central squares
-                            match piece.color {
-                                Color::White => eval += 50,
-                                Color::Black => eval -= 50,
-                            }
-                        }
+                        // if (j == 3 || j == 4) && (i == 3 || i == 4) { // bonus for being in the 4 central squares
+                        //     match piece.color {
+                        //         Color::White => eval += 50,
+                        //         Color::Black => eval -= 50,
+                        //     }
+                        // }
                     },
                 }
             }

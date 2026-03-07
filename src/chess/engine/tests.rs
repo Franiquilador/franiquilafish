@@ -1,8 +1,8 @@
 #![cfg(test)]
 
-    use super::*;
+use super::*;
 
-    mod startpos {
+mod startpos {
         use super::*;
 
         #[test]
@@ -51,7 +51,7 @@
         }
     }
 
-    mod kiwipete {
+mod kiwipete {
         use super::*;
 
         #[test]
@@ -99,7 +99,7 @@
         }
     }
 
-    mod pos_3 { // position 3 from CPW perft results
+mod pos_3 { // position 3 from CPW perft results
         use super::*;
 
         #[test]
@@ -145,7 +145,7 @@
         }
     }
 
-    mod pos_4 {
+mod pos_4 {
         use crate::chess::engine;
 
         use super::*;
@@ -195,7 +195,7 @@
         }
     }
 
-    mod pos_5 {
+mod pos_5 {
         use super::*;
 
         #[test]
@@ -235,7 +235,7 @@
         }
     }
 
-    mod pos_6 {
+mod pos_6 {
         use super::*;
 
         #[test]
@@ -276,7 +276,7 @@
     }
 
     
-    mod etheral_test_suite {
+mod etheral_test_suite {
         use super::*;
 
         mod pos_1 {
