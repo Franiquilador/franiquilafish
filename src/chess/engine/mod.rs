@@ -787,6 +787,7 @@ impl Engine {
 
         if legal_moves.is_empty() { // if there are no legal moves now, it is checkmate or stalemate
             if self.is_king_in_check(&board, &Color::White) { // check if white king was checkmated
+                // the ply is to penalize longer mates from the root, and prefer shorter ones
                     return -1_000_000 + ply; // Black wins, value close to infinity for normal play: not i32::MIN to not risk overflow
             } else {
                 return 0; // stalemate draw
@@ -848,6 +849,7 @@ impl Engine {
 
         if legal_moves.is_empty() { // if there are no legal moves now, it is checkmate or stalemate
             if self.is_king_in_check(&board, &Color::Black) { // check if black king was checkmated
+                // the ply is to penalize longer mates from the root, and prefer shorter ones
                 return 1_000_000 - ply; // White wins
             } else {
                 return 0; // stalemate draw
@@ -997,16 +999,27 @@ impl Engine {
 
         if legal_moves.len() == 1 { // so that it does not do iterative deepening on 1 available move
             b_m = legal_moves.first().copied();
+            
+            let mut board_clone = self.board.clone();
+            self.simulate_move(&b_m.unwrap(), &mut board_clone, &self.color);
+            let eval = if self.color == Color::Black { -self.eval(&board_clone) } else { self.eval(&board_clone) };
+            println!("info depth 1 score cp {eval} nodes 1 time 0 nps 0"); // to remove warning in fastchess
+
         } else if legal_moves.len() == 0 {
             println!("panicccccccc, no legal moves in the search");
             panic!("no legal moves");
         } else {
+            b_m = legal_moves.first().copied(); // so that it has any move and is not None if the time is super low, and the games do not stall in fastchess
+            let mut info_printed = false; // to remove warnings in fastchess: before saying bestmove, the engine is expected to always print a line with eval info, so even if is_full_depth is false for depth 1, info must be printed.
+
             let mut board_clone = self.board.clone();// to not clone it more than once between diferent depths of iterative deepening
             
-            while start.elapsed().as_millis() < eng_move_time as u128 /*&& eng_move_time > 0 */{
+            //always has to search at least depth 1 to print info to the guis, otherwise we get a warning from fastchess
+            while start.elapsed().as_millis() < eng_move_time as u128 || depth == 1 /*&& eng_move_time > 0 */{
                 let mut eval: i32 = -1;
                 let mut is_full_depth: bool;
 
+                
                 let search_start = std::time::Instant::now();
                 let mut duration_ms;
                 let mut nodes: u64 = 0;
@@ -1019,6 +1032,7 @@ impl Engine {
                             nodes = n;
                             b_m = Some(m);
                             eval = e;
+                            info_printed = true;
                         }
                     }
                 };
@@ -1038,9 +1052,17 @@ impl Engine {
 
                     println!("info depth {depth} time {duration_ms} nodes {nodes} score cp {eval} nps {nps}");
                 };
+
+                
                 
                 depth += 1; // iterative deepening
             }
+
+            if !info_printed {
+                self.simulate_move(&b_m.unwrap(), &mut board_clone, &self.color);
+                let eval = if self.color == Color::Black { -self.eval(&board_clone) } else { self.eval(&board_clone) };
+                println!("info depth 1 score cp {eval} nodes 1 time 0 nps 0");
+            };
         }
 
         best_move = b_m.unwrap().to_uci();
