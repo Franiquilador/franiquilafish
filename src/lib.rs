@@ -5,6 +5,8 @@ pub mod chess;
 /// 
 /// This function computes the sum f(a, b) = a + b
 /// 
+/// cargo doc will render everything inside src/ that belongs to the library crate
+/// 
 /// this will be rendered as markdown in the browser by rustdoc crate, bellow is a seperator and then a header
 /// 
 /// ---

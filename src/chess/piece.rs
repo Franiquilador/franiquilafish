@@ -2,17 +2,18 @@ use crate::chess::move_square::{Move, Square, Promotion};
 // use crate::chess::game::Color;
 use crate::chess::engine::Color;
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Default)]
 pub enum Piece {
     King,
-    Pawn,
+    #[default]
+    Pawn, // Pawn is the default variant, but it does not matter, it is just to initialize pieces in the Zobrist table
     Knight,
     Bishop,
     Rook,
     Queen,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Default)]
 pub struct ChessPiece {
     pub color: Color,
     pub piece: Piece,

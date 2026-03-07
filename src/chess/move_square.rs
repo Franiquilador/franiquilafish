@@ -18,7 +18,7 @@ pub enum Promotion {
 
 #[derive(PartialEq, Copy, Clone, Debug)]
 pub struct Square {
-    pub rank: i32, // included in (1..=8)
+    pub rank: i8, // included in (1..=8)
     pub file: char,
 }
 
@@ -83,7 +83,7 @@ const BASE_TEN: u32 = 10;
 
 impl Square {
     // returns None if the position is outside the board
-    pub fn new(file: char, rank: i32) -> Option<Self> {
+    pub fn new(file: char, rank: i8) -> Option<Self> {
         if ('a'..='h').contains(&file) && (1..=8).contains(&rank) {
             Some(Square { file: file, rank: rank })
         } else {
@@ -94,7 +94,7 @@ impl Square {
     fn from_str(s: &str) -> Option<Self> {
         let mut chars= s.chars();
         let file = chars.next()?; // ? means if its None, the function returns early. otherwise return the value inside option
-        let rank = chars.next()?.to_digit(BASE_TEN).map(|d| d as i32)?;
+        let rank = chars.next()?.to_digit(BASE_TEN).map(|d| d as i8)?;
 
         if ('a'..='h').contains(&file) && (1..=8).contains(&rank) {
             Some(Square { file: file, rank: rank })
@@ -108,7 +108,7 @@ impl Square {
         let new_file = (self.file as i8 + file_offset) as u8 as char;
         let new_rank = self.rank as i32 + rank_offset;
 
-        Square::new(new_file, new_rank as i32)
+        Square::new(new_file, new_rank as i8)
     }
 
     fn to_uci(&self) -> String {

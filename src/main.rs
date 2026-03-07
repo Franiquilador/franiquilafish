@@ -137,7 +137,7 @@ fn process_move(engine: &mut Engine, m: Move) {
         println!();
     }
     // dbg!(m);
-    print_board(engine.get_board().get_pieces(), engine.get_active_player());
+    // print_board(engine.get_board().get_pieces(), engine.get_active_player());
     // todo!("process move");
 }
 
@@ -228,6 +228,7 @@ fn search_thread(stop_clone: Arc<AtomicBool>, consumer: Receiver<String>) {
             "ucinewgame" => {
                 moves.clear();
                 engine.start();
+                engine.clear();
             },
             line => {
                 let parts: Vec<_> = line.split_whitespace().collect();
@@ -349,7 +350,7 @@ fn process_help() {
 
 fn process_new(game: &mut Engine) {
     game.start();
-    print_board(game.get_board().get_pieces(), game.get_active_player());
+    // print_board(game.get_board().get_pieces(), game.get_active_player());
 }
 
 fn print_board(mut pieces: [[Option<ChessPiece>; 8]; 8], active_player: &Color) {

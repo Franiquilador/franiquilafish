@@ -10,9 +10,13 @@ use crate::chess::move_square::{Move, Square};
 use std::sync::{Arc, Mutex, atomic::AtomicBool};
 use crate::chess::move_square::Promotion;
 
-#[derive(PartialEq, Debug, Clone, Copy)]
+use rand::{RngExt, SeedableRng};
+use rand::rngs::StdRng;
+
+#[derive(PartialEq, Debug, Clone, Copy, Default)]
 pub enum Color {
-    White,
+    #[default]
+    White, // white is the default, but it does not matter, it is just to initialize pieces in the Zobrist table
     Black,
 }
 
@@ -30,6 +34,19 @@ pub struct PlayerTimes { // in miliseconds
     pub binc: i32,
 }
 
+#[derive(Default, Debug, Clone)]
+pub struct ZobristPieceKey {
+    piece: ChessPiece,
+    pub key: u64,
+}
+
+#[derive(Debug, Clone)]
+pub struct ZobristKeys { // initial random keys for representing a hash/unique board position
+    pub piece_table: [[[ZobristPieceKey; 12]; 8]; 8],
+    pub blacks_turn: u64,
+    pub castling_keys: [u64; 4], // all 4 castling rights
+    pub en_passant_keys: [u64; 8], // the files for en passant
+}
 /// **this renders as bold text in markdown in cargo doc**
 pub struct Engine {
     pub is_running: bool, // this is the only field that apears in the cargo doc API documentation, because it is public
@@ -38,22 +55,166 @@ pub struct Engine {
     current_player: Color,
     board: Board,
     legal_moves: Vec<Move>,
+    
+  /* a hash or digest is a fixed size value which is the output of a hash function
+     a hash function takes an input of arbitrary size (normally called key) and returns a fixed size output (the hash)
+    
+     A good hash function has two properties:
+     Deterministic: same input always produces the same output
+     Avalanche effect: a tiny change in input (moving one pawn) produces a completely different output. This makes it hard to revert the hash to get the key that originated it 
+    
+     a hash table is just a table represented by an array where the index is just the hash.
+     the remainder is a common method to map integer hashes to the array in the hash table:
+     index = hash(key) % array_size
+     table[index] = value
+
+     there are 4.8 x 10^44 possible legal chess positions, but only 1.8 x 10^19 possible zobrist hashes for representing all boards, so there is a very very small chance that two boards colide and have the same zobrist hash (not desirable)
+     
+
+    table with the initially generated random zobrist keys, 12, one key for each piece type distinguishing color in each of the 64 squares of the board 
+    */
+    
+    zobrist_keys: ZobristKeys,
+    board_history: Vec<u64>, // every board position played up to this point in this game
 }
+
 
 impl Engine {
     pub fn new() -> Self {
+        let keys = Self::generate_zobrist_keys();
         Engine {
             is_running: true,
             game_state: GameState::Created,
             color: Color::Black,
             current_player: Color::White,
-            board: Board::new(),
+            board: Board::new(keys.clone()),
             legal_moves: vec![],
+            zobrist_keys: keys,
+            board_history: vec![],
         }
     }
 
+    fn generate_zobrist_keys() -> ZobristKeys {
+        let mut table: [[[ZobristPieceKey; 12]; 8]; 8] = Default::default();// initializes with meaningless default values which get overwritten anyways
+
+        //DONT CHANGE THE ORDER OF THIS VEC BELLOW
+        let all_piece_types = vec![
+            ChessPiece {
+                color: Color::Black,
+                piece: Piece::Pawn,
+            },
+            ChessPiece {
+                color: Color::Black,
+                piece: Piece::Knight,
+            },
+            ChessPiece {
+                color: Color::Black,
+                piece: Piece::Bishop,
+            },
+            ChessPiece {
+                color: Color::Black,
+                piece: Piece::Queen,
+            },
+            ChessPiece {
+                color: Color::Black,
+                piece: Piece::King,
+            },
+            ChessPiece {
+                color: Color::Black,
+                piece: Piece::Rook,
+            },
+            ChessPiece {
+                color: Color::White,
+                piece: Piece::Pawn,
+            },
+            ChessPiece {
+                color: Color::White,
+                piece: Piece::Knight,
+            },
+            ChessPiece {
+                color: Color::White,
+                piece: Piece::Bishop,
+            },
+            ChessPiece {
+                color: Color::White,
+                piece: Piece::Queen,
+            },
+            ChessPiece {
+                color: Color::White,
+                piece: Piece::King,
+            },
+            ChessPiece {
+                color: Color::White,
+                piece: Piece::Rook,
+            },
+        ];
+
+        // using the same seed every game results in the same sequence of keys generated after, which is what we want:
+        // it allows for opening books, because saving hashes to the disk means the keys are still usefull afterways, because the hashes representing the same position are equal in diferent games and processes in the computer:
+        // persistent transposition tables saved between games: good for opening teory, not so much for games because it is impossible for the same chess game to get played again
+        let mut rng = StdRng::seed_from_u64(123456789876543210); // the number argument is a seed, could be anything
+
+        for row in 0..8 {
+            for col in 0..8 {
+                for (k, piece) in all_piece_types.iter().enumerate() {
+                    table[row][col][k] = ZobristPieceKey {
+                        piece: *piece,
+                        key: rng.random(), // always the same sequence of random keys
+                    };
+                }
+            }
+        }
+
+        let blacks_turn: u64 = rng.random(); // this key is xored into the zobrish hash when its blacks turn, and not shored when its not black
+        
+        /* castling
+        At any point in the game, there are 4 castling rights that can independently be true or false:
+        White kingside
+        White queenside
+        Black kingside
+        Black queenside
+        we generate a random u64 for each. 
+        Whenever a castling right is active, we XOR its number into the hash. 
+        When the right is lost (king or rook moves), we XOR it back out to remove it.
+        */
+        let white_kingside: u64 = rng.random();
+        let white_queenside: u64 = rng.random();
+        let black_kingside: u64 = rng.random();
+        let black_queenside: u64 = rng.random();
+
+        let castling_keys = [white_kingside, white_queenside, black_kingside, black_queenside];
+
+        /*
+        En passant is only possible on specific files (a through h), so we only need 8 keys, one per file. 
+        When an en passant capture is available, we XOR in the key for that file. 
+        When it's no longer available (next move), we XOR it back out.
+        we do not need to encode the rank because en passant always happens on rank 3 or 6, which is determined by whose turn it is.
+         */
+        let ep_a: u64 = rng.random();
+        let ep_b: u64 = rng.random();
+        let ep_c: u64 = rng.random();
+        let ep_d: u64 = rng.random();
+        let ep_e: u64 = rng.random();
+        let ep_f: u64 = rng.random();
+        let ep_g: u64 = rng.random();
+        let ep_h: u64 = rng.random();
+
+        let ep_keys = [ep_a, ep_b, ep_c, ep_d, ep_e, ep_f, ep_g, ep_h];
+        
+        ZobristKeys { 
+            piece_table: table, 
+            blacks_turn: blacks_turn, 
+            castling_keys: castling_keys, 
+            en_passant_keys: ep_keys,
+        }
+    }
+
+    pub fn clear(&mut self) {
+        self.board_history.clear();
+    }
+
     pub fn load_from_fen(&mut self, fen_parts: Vec<&str>) { // is called every round if the game started from fen
-        self.board = Board::from_fen(fen_parts);
+        self.board = Board::from_fen(fen_parts, self.zobrist_keys.clone());
         self.current_player = self.board.current_player;
     }
 
@@ -155,10 +316,12 @@ impl Engine {
 
         Self::update_en_passant(m, &mut self.board, moving_piece, final_piece);
         Self::update_castling_rights(&mut self.board, moving_piece, final_piece, &starting_square, &final_square);
-        
-        // dbg!(&self.board);
+
+        self.board.hash_blacks_turn();
+
         self.update_active_player();
-        // todo!();
+        
+        self.board_history.push(self.board.zobrist_hash);
     }
 
     fn simulate_move(&self, m: &Move, board: &mut Board, color: &Color) {
@@ -184,6 +347,7 @@ impl Engine {
         Self::update_en_passant(m, board, moving_piece, final_piece);
         Self::update_castling_rights(board, moving_piece, final_piece, &starting_square, &final_square);
 
+        board.hash_blacks_turn();
     }
 
     fn move_castled_rook(board: &mut Board, final_square: &Square) { // m is the kings castling move notation
@@ -306,15 +470,29 @@ impl Engine {
     //Called from main.rs after Position command
     pub fn apply_moves(&mut self, moves: Vec<String>, is_fen: bool) {
         if !is_fen {
-            self.board = Board::new();// not in case of fen, because load_from_fen() is called from main before this method.
+            self.board = Board::new(self.zobrist_keys.clone());// not in case of fen, because load_from_fen() is called from main before this method.
             self.current_player = self.board.current_player;
+            self.board_history.clear();
         }
 
         for move_before in &moves {
             let m = Move::from_uci(move_before).unwrap();
             self.move_piece(&m); // updates board and active player color aswell
         }
+
+        /* 
+        if !moves.is_empty() {
+            let last_move = moves.last();
+            self.add_fen(moves.last().unwrap());
+        }*/
     }
+
+    /* let a = 0b1011;
+     println!("{}", a);   // prints: 11    (decimal)
+     println!("{:b}", a); // prints: 1011  (binary)
+     println!("{:x}", a); // prints: b     (hexadecimal)
+     println!("{:o}", a); // prints: 13    (octal)
+    */
 
     fn get_legal_moves(&self, board: &Board, color: Color) -> Vec<Move> {
         let mut pseudo_legal_moves = board.pseudo_legal_moves(&color);
@@ -329,7 +507,7 @@ impl Engine {
                 if let Some(p) = piece {
                     if p.color == *color && p.piece == Piece::Pawn {
                         let file = board::num_to_file(j as u8); // j is the file index (0..7) -> (a..=h)
-                        let rank = (i as i32) + 1;        // i is the rank index (0..7 → 1..8)
+                        let rank = (i as i8) + 1;        // i is the rank index (0..7 → 1..8)
 
                         let pos = Square::new(file, rank).unwrap();
 
@@ -371,14 +549,11 @@ impl Engine {
 
             let other_player = if color == Color::Black { Color::White } else { Color::Black };
             let other_player_legal_moves = board_clone.pseudo_legal_moves(&other_player);
-
-            // eprintln!("Simulated black move: {}", m.to_uci());
-            // eprintln!("White pseudo-legal moves after: {:?}", 
-                // other_player_legal_moves.iter().map(|x| x.to_uci()).collect::<Vec<_>>());
             
             for other_m in other_player_legal_moves {
                 let final_square= other_m.final_square();
-                if is_a_castle { 
+
+                if is_a_castle { // remove castles when the king is in check and its path
                     let engine_final_square = m.final_square();
                     match color {
                         Color::Black => {
@@ -564,8 +739,37 @@ impl Engine {
         }
     }
 
+    fn is_king_in_check(&self, board: &Board, color: &Color) -> bool { // check if the king with the given color is in check
+        let mut kings_square: Square;
+        let is_in_check = false;
+        
+
+        for (i, row) in board.get_pieces().iter().enumerate() {
+            for (j, piece) in row.iter().enumerate() {
+                match piece {
+                    None => {},
+                    Some(p) => {
+                        if p.piece == Piece::King && &p.color == color {
+                            kings_square = Square { rank: (i as i8) + 1, file: board::num_to_file(j as u8) };
+                            let oponents_legal_moves = self.get_legal_moves(board, if color == &Color::White { Color::Black } else { Color::White });
+                            
+                            for m in oponents_legal_moves {
+                                if m.final_square() == kings_square {
+                                    return true;
+                                }
+                            }
+                            return false;
+                        }
+                    }
+                };
+            };
+        };
+
+        return is_in_check; // should never reach this return, because the king should be found somewhere in the board
+    }
+
     // in a max node: we define alpha, and test beta
-    fn max_value(&self, depth: i32, board: Board, start: Instant, eng_move_time: i32, node_count: &mut u64, alpha: i32, beta: i32) -> i32 {
+    fn max_value(&self, depth: i32, board: Board, start: Instant, eng_move_time: i32, node_count: &mut u64, alpha: i32, beta: i32, board_history: Vec<u64>) -> i32 {
         if start.elapsed().as_millis() > eng_move_time as u128 {
             return self.eval(&board);
         }
@@ -574,19 +778,34 @@ impl Engine {
 
         let legal_moves = self.get_legal_moves(&board, Color::White); // child nodes/positions
 
-        if depth == 0 || legal_moves.is_empty() { // if there are no legal moves now, it is checkmate or stalemate
+        if legal_moves.is_empty() { // if there are no legal moves now, it is checkmate or stalemate
+            if self.is_king_in_check(&board, &Color::White) { // check if white king was checkmated
+                    return -1_000_000; // Black wins, value close to infinity for normal play: not i32::MIN to not risk overflow
+            } else {
+                return 0; // stalemate draw
+            }
+        } else if Self::is_three_fold_draw(board.zobrist_hash, &board_history) {
+            return 0;
+        } else if depth == 0 {
             return self.eval(&board);
         }
 
         let mut best = i32::MIN;
         let mut alpha = alpha;
 
+        let mut board_history = board_history;
+
         for m in &legal_moves {
             let mut board_clone = board.clone();
+            // let mut board_hist_clone = board_history.clone();
 
             self.simulate_move(m, &mut board_clone, &Color::White); // do a move
 
-            let v = self.min_value(depth - 1, board_clone.clone(), start, eng_move_time, node_count, alpha, beta);
+            board_history.push(board_clone.zobrist_hash);
+
+            let v = self.min_value(depth - 1, board_clone.clone(), start, eng_move_time, node_count, alpha, beta, board_history.clone());
+
+            board_history.pop();
 
             if v > best { // for each move that we do, we return the one that is the most valuable for white
                 best = v;
@@ -606,7 +825,7 @@ impl Engine {
         best
     }
 
-    fn min_value(&self, depth: i32, board: Board, start: Instant, eng_move_time: i32, node_count: &mut u64, alpha: i32, beta: i32) -> i32 {
+    fn min_value(&self, depth: i32, board: Board, start: Instant, eng_move_time: i32, node_count: &mut u64, alpha: i32, beta: i32, board_history: Vec<u64>) -> i32 {
         if start.elapsed().as_millis() > eng_move_time as u128 {
             return self.eval(&board);
         }
@@ -615,22 +834,36 @@ impl Engine {
 
         let legal_moves = self.get_legal_moves(&board, Color::Black); // child nodes/positions
 
-        if depth == 0 || legal_moves.is_empty() { // if there are no legal moves now, it is checkmate or stalemate
+        if legal_moves.is_empty() { // if there are no legal moves now, it is checkmate or stalemate
+            if self.is_king_in_check(&board, &Color::Black) { // check if black king was checkmated
+                return 1_000_000; // White wins
+            } else {
+                return 0; // stalemate draw
+            }
+        } else if Self::is_three_fold_draw(board.zobrist_hash, &board_history) {
+            return 0;
+        } else if depth == 0 {
             return self.eval(&board);
         }
 
         let mut best = i32::MAX;
         let mut beta = beta;
 
+        let mut board_history = board_history;
+
         for m in &legal_moves {
             let mut board_clone = board.clone();
 
             self.simulate_move(m, &mut board_clone, &Color::Black); // do a move/go down into a branch
 
-            let v = self.max_value(depth - 1, board_clone.clone(), start, eng_move_time, node_count, alpha, beta);
+            board_history.push(board_clone.zobrist_hash);
+
+            let v = self.max_value(depth - 1, board_clone.clone(), start, eng_move_time, node_count, alpha, beta, board_history.clone());
             if v < best { // for each move that we do, we return the one that is the most valuable for black
                 best = v;
             }
+
+            board_history.pop();
 
             // se a melhor opção deste nó min (desta chamada de min_value na arvore de pesquisa), é menor do que o alpha,
             // entao este ramo nunca vai ser escolhido pois o best deste no seria sempre menor do que a melhor opção do max acima (o alpha)
@@ -662,6 +895,8 @@ impl Engine {
         let mut alpha = i32::MIN;
         let mut beta = i32::MAX;
 
+        let mut board_hist_clone = self.board_history.clone();
+
         for m in &legal_moves {
 
             if start.elapsed().as_millis() > eng_move_time as u128 {
@@ -673,11 +908,34 @@ impl Engine {
 
             self.simulate_move(m, &mut board_clone, &maximizing_player);
 
-            let eval = if maximizing_player == Color::White { // minimax eval for each of the moves, max calls min and min calls max
-                self.min_value(depth - 1, board_clone.clone(), start, eng_move_time, &mut total_nodes, alpha, beta)
+            board_hist_clone.push(board_clone.zobrist_hash);
+
+            let eval = if Self::is_three_fold_draw(board_clone.zobrist_hash, &board_hist_clone) {
+                0
+            } else if maximizing_player == Color::White { // minimax eval for each of the moves, max calls min and min calls max
+                self.min_value(
+                    depth - 1, 
+                    board_clone.clone(), 
+                    start, 
+                    eng_move_time, 
+                    &mut total_nodes, 
+                    alpha, 
+                    beta,
+                    board_hist_clone.clone()
+                )
             } else { // black just played, now its white to simulate a move
-                self.max_value(depth - 1, board_clone.clone(), start, eng_move_time, &mut total_nodes, alpha, beta)
+                self.max_value(
+                    depth - 1, 
+                    board_clone.clone(), 
+                    start, eng_move_time, 
+                    &mut total_nodes, 
+                    alpha, 
+                    beta,
+                    board_hist_clone.clone()
+                )
             };
+
+            board_hist_clone.pop();
 
             match maximizing_player {
                 Color::White => {
@@ -723,7 +981,7 @@ impl Engine {
             println!("panicccccccc, no legal moves in the search");
             panic!("no legal moves");
         } else {
-            let mut board_clone = self.board.clone();
+            let mut board_clone = self.board.clone();// to not clone it more than once between diferent depths of iterative deepening
             
             while start.elapsed().as_millis() < eng_move_time as u128 /*&& eng_move_time > 0 */{
                 let mut eval: i32 = -1;
@@ -816,7 +1074,27 @@ impl Engine {
         self.board.update_move_counts(self.color, is_capture_or_pawn_move);
 
         self.move_piece(&b_m.unwrap()); // apply engine move to the board
+
+        // self.add_fen(&best_move);
+        // self.board_history.push(self.board.zobrist_hash);
+
         best_move
+    }
+
+    fn is_three_fold_draw(hash: u64, board_history: &Vec<u64>) -> bool {
+        let mut repetition_count = 0;
+        let is_draw = false;
+
+        for pos in board_history.iter().rev() { // search backwards to enconter a draw faster
+            if *pos == hash {
+                repetition_count += 1;
+            }
+            if repetition_count >= 2 {
+                return true;
+            }
+        }
+        
+        is_draw
     }
 
     fn is_capture_or_pawn_move(&self, m: Move) -> bool { // checks important info for the 50 move draw rule
@@ -851,11 +1129,18 @@ impl Engine {
                         if piece.piece == Piece::Pawn && board.get_en_passant().is_some() {
                             let ep_square = board.get_en_passant().unwrap();
 
-                            if ep_square.rank == (i as i32) + 1 && board::file_to_num(ep_square.file) == j as u8 {
+                            if ep_square.rank == (i as i8) + 1 && board::file_to_num(ep_square.file) == j as u8 {
                                 continue;
                             }
                         }
                         eval += piece.value();
+
+                        if (j == 3 || j == 4) && (i == 3 || i == 4) { // bonus for being in the 4 central squares
+                            match piece.color {
+                                Color::White => eval += 50,
+                                Color::Black => eval -= 50,
+                            }
+                        }
                     },
                 }
             }

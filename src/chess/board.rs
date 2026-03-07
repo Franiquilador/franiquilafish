@@ -3,24 +3,9 @@ use std::{convert, vec};
 use std::io::{stdout, Write};
 
 // use crate::chess::game::Color;
-use crate::chess::engine::Color;
+use crate::chess::engine::{ZobristKeys, Color};
 use crate::chess::move_square::{Move, Square, Promotion};
 use crate::chess::piece::{self, ChessPiece as CP, ChessPiece, Piece};
-
-
-//file = collumn
-//rank = row
-#[derive(Debug, Clone)]
-pub struct Board {
-    fen: String,
-    pub current_player: Color,
-    en_passant: Option<Square>, // target square for en passant if it exists
-    castling_rights: Vec<char>,
-    // pub half_moves: i32, // increments on every turn~, used to skip already aplied moves in UCI comunication
-    half_move_clock: i32, // registered on the fen, use for the 50 move no capture etc draw rule
-    full_moves: i32, //
-    pieces: [[Option<ChessPiece>; 8]; 8],
-}
 
 #[derive(Debug, Clone)]
 enum CastlingSide {
@@ -35,171 +20,312 @@ enum Castling {
     Black(Option<CastlingSide>),
 }
 
+//file = collumn
+//rank = row
+#[derive(Debug, Clone)]
+pub struct Board {
+    fen: String,
+    pub current_player: Color,
+    en_passant: Option<Square>, // target square for en passant if it exists
+    castling_rights: Vec<char>,
+    pub half_moves: i32, // increments on every turn, used to skip already aplied moves in UCI comunication
+    half_move_clock: i32, // registered on the fen, use for the 50 move no capture etc draw rule
+    full_moves: i32, //
+    pieces: [[Option<ChessPiece>; 8]; 8],
+    zobrist_keys: ZobristKeys,
+    pub zobrist_hash: u64, // a unique hash representing a unique board position
+}
+
 const INITIAL_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"; // capital letters are white
 
 impl Board {
-    pub fn new() -> Self { // from starting position
+    pub fn new(keys: ZobristKeys) -> Self { // from starting position
         let initial_pos = String::from(INITIAL_FEN);
+        let initial_pieces = [
+                [
+                    Some(ChessPiece {
+                        color: Color::White,
+                        piece: Piece::Rook,
+                    }),
+                    Some(ChessPiece {
+                        color: Color::White,
+                        piece: Piece::Knight,
+                    }),
+                    Some(ChessPiece {
+                        color: Color::White,
+                        piece: Piece::Bishop,
+                    }),
+                    Some(ChessPiece {
+                        color: Color::White,
+                        piece: Piece::Queen,
+                    }),
+                    Some(ChessPiece {
+                        color: Color::White,
+                        piece: Piece::King,
+                    }),
+                    Some(ChessPiece {
+                        color: Color::White,
+                        piece: Piece::Bishop,
+                    }),
+                    Some(ChessPiece {
+                        color: Color::White,
+                        piece: Piece::Knight,
+                    }),
+                    Some(ChessPiece {
+                        color: Color::White,
+                        piece: Piece::Rook,
+                    }),
+                ],
+                [
+                    Some(ChessPiece {
+                        color: Color::White,
+                        piece: Piece::Pawn,
+                    }),
+                    Some(ChessPiece {
+                        color: Color::White,
+                        piece: Piece::Pawn,
+                    }),
+                    Some(ChessPiece {
+                        color: Color::White,
+                        piece: Piece::Pawn,
+                    }),
+                    Some(ChessPiece {
+                        color: Color::White,
+                        piece: Piece::Pawn,
+                    }),
+                    Some(ChessPiece {
+                        color: Color::White,
+                        piece: Piece::Pawn,
+                    }),
+                    Some(ChessPiece {
+                        color: Color::White,
+                        piece: Piece::Pawn,
+                    }),
+                    Some(ChessPiece {
+                        color: Color::White,
+                        piece: Piece::Pawn,
+                    }),
+                    Some(ChessPiece {
+                        color: Color::White,
+                        piece: Piece::Pawn,
+                    }),
+                ],
+                [None, None, None, None, None, None, None, None],
+                [None, None, None, None, None, None, None, None],
+                [None, None, None, None, None, None, None, None],
+                [None, None, None, None, None, None, None, None],
+                [
+                    Some(ChessPiece {
+                        color: Color::Black,
+                        piece: Piece::Pawn,
+                    }),
+                    Some(ChessPiece {
+                        color: Color::Black,
+                        piece: Piece::Pawn,
+                    }),
+                    Some(ChessPiece {
+                        color: Color::Black,
+                        piece: Piece::Pawn,
+                    }),
+                    Some(ChessPiece {
+                        color: Color::Black,
+                        piece: Piece::Pawn,
+                    }),
+                    Some(ChessPiece {
+                        color: Color::Black,
+                        piece: Piece::Pawn,
+                    }),
+                    Some(ChessPiece {
+                        color: Color::Black,
+                        piece: Piece::Pawn,
+                    }),
+                    Some(ChessPiece {
+                        color: Color::Black,
+                        piece: Piece::Pawn,
+                    }),
+                    Some(ChessPiece {
+                        color: Color::Black,
+                        piece: Piece::Pawn,
+                    }),
+                ],
+                [
+                    Some(ChessPiece {
+                        color: Color::Black,
+                        piece: Piece::Rook,
+                    }),
+                    Some(ChessPiece {
+                        color: Color::Black,
+                        piece: Piece::Knight,
+                    }),
+                    Some(ChessPiece {
+                        color: Color::Black,
+                        piece: Piece::Bishop,
+                    }),
+                    Some(ChessPiece {
+                        color: Color::Black,
+                        piece: Piece::Queen,
+                    }),
+                    Some(ChessPiece {
+                        color: Color::Black,
+                        piece: Piece::King,
+                    }),
+                    Some(ChessPiece {
+                        color: Color::Black,
+                        piece: Piece::Bishop,
+                    }),
+                    Some(ChessPiece {
+                        color: Color::Black,
+                        piece: Piece::Knight,
+                    }),
+                    Some(ChessPiece {
+                        color: Color::Black,
+                        piece: Piece::Rook,
+                    }),
+                ],
+        ];
+
         Board {
             fen: initial_pos,
             // castling_rights: [Castling::White(Some(CastlingSide::All)), Castling::Black(Some(CastlingSide::All))],
             castling_rights: vec!['K', 'Q', 'k', 'q'],
             en_passant: None,
-            // half_moves: 0,
+            half_moves: 0,
             half_move_clock: 0,
             full_moves: 1,
             current_player: Color::White,
-            pieces: [
-                [
-                    Some(ChessPiece {
-                        color: Color::White,
-                        piece: Piece::Rook,
-                    }),
-                    Some(ChessPiece {
-                        color: Color::White,
-                        piece: Piece::Knight,
-                    }),
-                    Some(ChessPiece {
-                        color: Color::White,
-                        piece: Piece::Bishop,
-                    }),
-                    Some(ChessPiece {
-                        color: Color::White,
-                        piece: Piece::Queen,
-                    }),
-                    Some(ChessPiece {
-                        color: Color::White,
-                        piece: Piece::King,
-                    }),
-                    Some(ChessPiece {
-                        color: Color::White,
-                        piece: Piece::Bishop,
-                    }),
-                    Some(ChessPiece {
-                        color: Color::White,
-                        piece: Piece::Knight,
-                    }),
-                    Some(ChessPiece {
-                        color: Color::White,
-                        piece: Piece::Rook,
-                    }),
-                ],
-                [
-                    Some(ChessPiece {
-                        color: Color::White,
-                        piece: Piece::Pawn,
-                    }),
-                    Some(ChessPiece {
-                        color: Color::White,
-                        piece: Piece::Pawn,
-                    }),
-                    Some(ChessPiece {
-                        color: Color::White,
-                        piece: Piece::Pawn,
-                    }),
-                    Some(ChessPiece {
-                        color: Color::White,
-                        piece: Piece::Pawn,
-                    }),
-                    Some(ChessPiece {
-                        color: Color::White,
-                        piece: Piece::Pawn,
-                    }),
-                    Some(ChessPiece {
-                        color: Color::White,
-                        piece: Piece::Pawn,
-                    }),
-                    Some(ChessPiece {
-                        color: Color::White,
-                        piece: Piece::Pawn,
-                    }),
-                    Some(ChessPiece {
-                        color: Color::White,
-                        piece: Piece::Pawn,
-                    }),
-                ],
-                [None, None, None, None, None, None, None, None],
-                [None, None, None, None, None, None, None, None],
-                [None, None, None, None, None, None, None, None],
-                [None, None, None, None, None, None, None, None],
-                [
-                    Some(ChessPiece {
-                        color: Color::Black,
-                        piece: Piece::Pawn,
-                    }),
-                    Some(ChessPiece {
-                        color: Color::Black,
-                        piece: Piece::Pawn,
-                    }),
-                    Some(ChessPiece {
-                        color: Color::Black,
-                        piece: Piece::Pawn,
-                    }),
-                    Some(ChessPiece {
-                        color: Color::Black,
-                        piece: Piece::Pawn,
-                    }),
-                    Some(ChessPiece {
-                        color: Color::Black,
-                        piece: Piece::Pawn,
-                    }),
-                    Some(ChessPiece {
-                        color: Color::Black,
-                        piece: Piece::Pawn,
-                    }),
-                    Some(ChessPiece {
-                        color: Color::Black,
-                        piece: Piece::Pawn,
-                    }),
-                    Some(ChessPiece {
-                        color: Color::Black,
-                        piece: Piece::Pawn,
-                    }),
-                ],
-                [
-                    Some(ChessPiece {
-                        color: Color::Black,
-                        piece: Piece::Rook,
-                    }),
-                    Some(ChessPiece {
-                        color: Color::Black,
-                        piece: Piece::Knight,
-                    }),
-                    Some(ChessPiece {
-                        color: Color::Black,
-                        piece: Piece::Bishop,
-                    }),
-                    Some(ChessPiece {
-                        color: Color::Black,
-                        piece: Piece::Queen,
-                    }),
-                    Some(ChessPiece {
-                        color: Color::Black,
-                        piece: Piece::King,
-                    }),
-                    Some(ChessPiece {
-                        color: Color::Black,
-                        piece: Piece::Bishop,
-                    }),
-                    Some(ChessPiece {
-                        color: Color::Black,
-                        piece: Piece::Knight,
-                    }),
-                    Some(ChessPiece {
-                        color: Color::Black,
-                        piece: Piece::Rook,
-                    }),
-                ],
-            ],
+            pieces: initial_pieces,
+            zobrist_keys: keys.clone(),
+            zobrist_hash: Self::initial_zobrist_hash(initial_pieces, keys),
         }
     }
 
-    pub fn from_fen(fen_parts: Vec<&str>) -> Self {
+    fn initial_zobrist_hash(pieces: [[Option<ChessPiece>; 8]; 8], keys: ZobristKeys) -> u64 {
+        let mut initial_hash: u64 = 0; // A ^ 0 = A - propriedade do elemento neutro
+
+        //encode all pieces into the hash
+        for (i, row) in pieces.iter().enumerate() {
+            for (j, piece) in row.iter().enumerate() {
+                match piece {
+                    None => {},
+                    Some(p) => {
+                        match (p.piece, p.color) {
+                            (Piece::Pawn, Color::Black) => {
+                                initial_hash = initial_hash ^ keys.piece_table[i][j][0].key; // The index is determined by the piece order in all_piece_types in the generate fn in the Engine
+                                // the same as initial_hash ^= keys.zobrist_piece_table[i][j][0].key;
+                            }
+
+                            (Piece::Knight, Color::Black) => {
+                                initial_hash ^= keys.piece_table[i][j][1].key;
+                            }
+
+                            (Piece::Bishop, Color::Black) => {
+                                initial_hash ^= keys.piece_table[i][j][2].key;
+                            }
+
+                            (Piece::Queen, Color::Black) => {
+                                initial_hash ^= keys.piece_table[i][j][3].key;
+                            }
+
+                            (Piece::King, Color::Black) => {
+                                initial_hash ^= keys.piece_table[i][j][4].key;
+                            }
+
+                            (Piece::Rook, Color::Black) => {
+                                initial_hash ^= keys.piece_table[i][j][5].key;
+                            }
+
+                            (Piece::Pawn, Color::White) => {
+                                initial_hash = initial_hash ^ keys.piece_table[i][j][6].key;
+                                // the same as initial_hash ^= keys.zobrist_piece_table[i][j][6].key;
+                            }
+
+                            (Piece::Knight, Color::White) => {
+                                initial_hash ^= keys.piece_table[i][j][7].key;
+                            }
+
+                            (Piece::Bishop, Color::White) => {
+                                initial_hash ^= keys.piece_table[i][j][8].key;
+                            }
+
+                            (Piece::Queen, Color::White) => {
+                                initial_hash ^= keys.piece_table[i][j][9].key;
+                            }
+
+                            (Piece::King, Color::White) => {
+                                initial_hash ^= keys.piece_table[i][j][10].key;
+                            }
+
+                            (Piece::Rook, Color::White) => {
+                                initial_hash ^= keys.piece_table[i][j][11].key;
+                            }
+                        };
+                    }
+                }
+            }
+        }
+
+        // side to move is not black on the startpos so we do ignore it
+        // ep is not possible because no moves were made yet, so we ignore it
+
+        //all castling rights in the initial pos
+        initial_hash ^= keys.castling_keys[0]; // white kingside
+        initial_hash ^= keys.castling_keys[1]; // white queenside
+        initial_hash ^= keys.castling_keys[2]; // black kingside
+        initial_hash ^= keys.castling_keys[3]; // black queenside
+
+        initial_hash
+    }
+
+    pub fn from_fen(fen_parts: Vec<&str>, keys: ZobristKeys) -> Self {
         let n_full_moves = fen_parts.get(5).expect("fen should have full move").parse().unwrap();
         let current_player = Self::current_player_from_fen(fen_parts.get(1)
         .expect("fen should have current player"));
 
         let ep_square = Self::en_passant_from_fen(fen_parts.clone());
+        let fen_pieces = Self::pieces_from_fen(fen_parts.clone());
+
+        let mut hash = Self::initial_zobrist_hash(fen_pieces, keys.clone());//with all castling rights included
+
+        match ep_square {// add the ep_file to the hash, if it exists
+            None => {},
+            Some(s) => {
+                match s.file {
+                    'a' => {
+                        hash ^= keys.en_passant_keys[0];        
+                    }
+                    'b' => {
+                        hash ^= keys.en_passant_keys[1];        
+                    }
+                    'c' => {
+                        hash ^= keys.en_passant_keys[2];        
+                    }
+                    'd' => {
+                        hash ^= keys.en_passant_keys[3];        
+                    }
+                    'e' => {
+                        hash ^= keys.en_passant_keys[4];        
+                    }
+                    'f' => {
+                        hash ^= keys.en_passant_keys[5];        
+                    }
+                    'g' => {
+                        hash ^= keys.en_passant_keys[6];        
+                    }
+                    'h' => {
+                        hash ^= keys.en_passant_keys[7];        
+                    }
+
+                    _ => {
+                        println!("PANIC, invalid en passant file");
+                        panic!("invalid en passant file");
+                    }
+                }
+            }
+        };
+
+        if current_player == Color::Black { //add blacks turn to the hash
+            hash ^= keys.blacks_turn;
+        }
 
         let mut board = Board {
             fen: fen_parts.join(" ").trim().to_string(), // joins the fen into a single string with whitespace in between
@@ -208,8 +334,11 @@ impl Board {
             en_passant: None,
             half_move_clock: fen_parts.get(4).expect("fen should have halfmove clock").parse().unwrap(),
             full_moves: n_full_moves,
-            // half_moves: Self::half_moves_from_fen(n_full_moves, current_player),
-            pieces: Self::pieces_from_fen(fen_parts) };
+            half_moves: Self::half_moves_from_fen(n_full_moves, current_player),
+            pieces: fen_pieces,
+            zobrist_keys: keys,
+            zobrist_hash: hash,
+        };
 
         board.en_passant(ep_square);
         
@@ -226,13 +355,17 @@ impl Board {
         vec_rights
     }
 
+    pub fn hash_blacks_turn(&mut self) {
+        self.zobrist_hash ^= self.zobrist_keys.blacks_turn;
+    }
+
     fn half_moves_from_fen(full_moves: i32, current_player: Color) -> i32 {
         let half_moves = ((full_moves - 1) * 2) + (if current_player == Color::Black { 1 } else { 0 });
         half_moves
     }
 
     pub fn update_move_counts(&mut self, player_who_just_played: Color, is_capture_or_pawn_move: bool) {
-        // self.half_moves += 1;     
+        self.half_moves += 1;     
         if player_who_just_played == Color::Black {
             self.full_moves += 1;
         }
@@ -397,12 +530,20 @@ impl Board {
 
     // removes all castling rights because the King just moved
     pub fn remove_all_castling(&mut self, color: &Color) {
+
         match color {
             Color::Black => {
                 for c in &self.castling_rights.clone() {
                     match c {
                         'k' | 'q' => {
                             self.castling_rights.retain(|&r|  r != *c); // remove that char from the vec
+
+                            // xor property: (A ^ B) ^ B = A
+                            if *c == 'k' {// remove black kingside from the hash by xoring it out of the hash
+                                self.zobrist_hash ^= self.zobrist_keys.castling_keys[2];
+                            } else {//remove queenside
+                                self.zobrist_hash ^= self.zobrist_keys.castling_keys[3];
+                            }
                         },
                         _ => continue,
                     }
@@ -413,12 +554,19 @@ impl Board {
                     match c {
                         'K' | 'Q' => {
                             self.castling_rights.retain(|&r|  r != *c); // remove that char from the vec
+
+                            // xor property: (A ^ B) ^ B = A
+                            if *c == 'K' {// remove white kingside from the hash by xoring it out of the hash
+                                self.zobrist_hash ^= self.zobrist_keys.castling_keys[0];
+                            } else {//remove queenside
+                                self.zobrist_hash ^= self.zobrist_keys.castling_keys[1];
+                            }
                         },
                         _ => continue,
                     }
                 }
             },
-        }
+        };
     }
 
     // a rook moved, remove castling from that side
@@ -427,15 +575,19 @@ impl Board {
             Color::Black => {
                 if initial_square.rank == 8 && initial_square.file == 'h' { // king side remove
                     self.castling_rights.retain(|c| *c != 'k');
+                    self.zobrist_hash ^= self.zobrist_keys.castling_keys[2]; // remove the right from the hash by xoring it again: xor property: (A ^ B) ^ B = A
                 } else if initial_square.rank == 8 && initial_square.file == 'a' { // queen side remove
                     self.castling_rights.retain(|c| *c != 'q');
+                    self.zobrist_hash ^= self.zobrist_keys.castling_keys[3];
                 }
             }
             Color::White => {
                 if initial_square.rank == 1 && initial_square.file == 'h' { // king side remove
                     self.castling_rights.retain(|c| *c != 'K');
+                    self.zobrist_hash ^= self.zobrist_keys.castling_keys[0];
                 } else if initial_square.rank == 1 && initial_square.file == 'a' { // queen side remove
                     self.castling_rights.retain(|c| *c != 'Q');
+                    self.zobrist_hash ^= self.zobrist_keys.castling_keys[1];
                 }
             }
         }
@@ -503,8 +655,8 @@ impl Board {
         }
     }
 
-    pub fn get_pieces(&self) -> [[Option<ChessPiece>; 8]; 8] {
-        self.pieces.clone()
+    pub fn get_pieces(&self) -> &[[Option<ChessPiece>; 8]; 8] {
+        &self.pieces
     }
 
     pub fn pseudo_legal_moves(&self, moving_player: &Color) -> Vec<Move> {
@@ -522,7 +674,7 @@ impl Board {
                             continue;
                         } else {
                             let file = num_to_file(j as u8); // j is the file index (0..7) -> (a..=h)
-                            let rank = (i as i32) + 1;        // i is the rank index (0..7 → 1..8)
+                            let rank = (i as i8) + 1;        // i is the rank index (0..7 → 1..8)
                         
                             let pos = Square::new(file, rank).expect("should be a valid square but it is not");
                         
@@ -595,7 +747,7 @@ impl Board {
                 };
 
                 let steps = rank_dif.abs();
-                if steps != <i8 as Into<i32>>::into(file_dif).abs() {
+                if steps != file_dif.abs() {
                     return false;  // Not a diagonal move!
                 }
 
@@ -665,7 +817,7 @@ impl Board {
                     };
 
                     let steps = rank_dif.abs();
-                    if steps != <i8 as Into<i32>>::into(file_dif).abs() {
+                    if steps != file_dif.abs() {
                         return false;  // Not a diagonal move!
                     }
 
@@ -953,6 +1105,244 @@ impl Board {
     pub fn update_square(&mut self, piece: Option<ChessPiece>, square: &Square) {
         let col = file_to_num(square.file);
         let row = square.rank as usize - 1;
+
+        /*
+        if self.pieces[row][col as usize] != None { // it is a capture, we gotta xor out the captured piece first
+            match self.pieces[row][col as usize] {
+                None => { 
+                    println!("PANIC, should be None");
+                    panic!("should be None");
+                }
+                Some(p) => {// match the piece that was captured
+                    match (p.piece, p.color) {
+                        
+                    
+                
+                (Piece::Pawn, Color::Black) => {
+                                // The index is determined by the piece order in all_piece_types in the generate fn in the Engine
+                                self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][0].key;
+                            }
+
+                            (Piece::Knight, Color::Black) => {
+                                self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][1].key;
+                            }
+
+                            (Piece::Bishop, Color::Black) => {
+                                self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][2].key;
+                            }
+
+                            (Piece::Queen, Color::Black) => {
+                                self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][3].key;
+                            }
+
+                            (Piece::King, Color::Black) => {
+                                self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][4].key;
+                            }
+
+                            (Piece::Rook, Color::Black) => {
+                                self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][5].key;
+                            }
+
+                            (Piece::Pawn, Color::White) => {
+                                self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][6].key;
+                            }
+
+                            (Piece::Knight, Color::White) => {
+                                self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][7].key;
+                            }
+
+                            (Piece::Bishop, Color::White) => {
+                                self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][8].key;
+                            }
+
+                            (Piece::Queen, Color::White) => {
+                                self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][9].key;
+                            }
+
+                            (Piece::King, Color::White) => {
+                                self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][10].key;
+                            }
+
+                            (Piece::Rook, Color::White) => {
+                                self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][11].key;
+                            }
+                    }
+                    }
+            }
+        }
+*/
+        
+        match piece {
+            None => { // removing a piece from a square
+                let cp = self.get_piece_at_square(square);
+                match cp {
+                    None => {
+                        println!("PANICC, should be a piece at the square we were removing a piece from");
+                        panic!("should be a piece at the square we were removing a piece from");
+                    }
+                    Some(p) => {
+                        match (p.piece, p.color) {
+                            (Piece::Pawn, Color::Black) => {
+                                // The index is determined by the piece order in all_piece_types in the generate fn in the Engine
+                                self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][0].key;
+                            }
+
+                            (Piece::Knight, Color::Black) => {
+                                self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][1].key;
+                            }
+
+                            (Piece::Bishop, Color::Black) => {
+                                self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][2].key;
+                            }
+
+                            (Piece::Queen, Color::Black) => {
+                                self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][3].key;
+                            }
+
+                            (Piece::King, Color::Black) => {
+                                self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][4].key;
+                            }
+
+                            (Piece::Rook, Color::Black) => {
+                                self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][5].key;
+                            }
+
+                            (Piece::Pawn, Color::White) => {
+                                self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][6].key;
+                            }
+
+                            (Piece::Knight, Color::White) => {
+                                self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][7].key;
+                            }
+
+                            (Piece::Bishop, Color::White) => {
+                                self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][8].key;
+                            }
+
+                            (Piece::Queen, Color::White) => {
+                                self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][9].key;
+                            }
+
+                            (Piece::King, Color::White) => {
+                                self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][10].key;
+                            }
+
+                            (Piece::Rook, Color::White) => {
+                                self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][11].key;
+                            }
+                        };
+                    }
+                }
+            }
+            Some(p) => { // adding a piece to a square
+                if let Some(existing) = self.pieces[row][col as usize] {
+                    match (existing.piece, existing.color) {
+                        (Piece::Pawn, Color::Black) => {
+                            // The index is determined by the piece order in all_piece_types in the generate fn in the Engine
+                            self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][0].key;
+                        }
+
+                        (Piece::Knight, Color::Black) => {
+                            self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][1].key;
+                        }
+
+                        (Piece::Bishop, Color::Black) => {
+                            self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][2].key;
+                        }
+
+                        (Piece::Queen, Color::Black) => {
+                            self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][3].key;
+                        }
+
+                        (Piece::King, Color::Black) => {
+                            self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][4].key;
+                        }
+
+                        (Piece::Rook, Color::Black) => {
+                            self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][5].key;
+                        }
+
+                        (Piece::Pawn, Color::White) => {
+                            self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][6].key;
+                        }
+
+                        (Piece::Knight, Color::White) => {
+                            self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][7].key;
+                        }
+
+                        (Piece::Bishop, Color::White) => {
+                            self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][8].key;
+                        }
+
+                        (Piece::Queen, Color::White) => {
+                            self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][9].key;
+                        }
+
+                        (Piece::King, Color::White) => {
+                            self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][10].key;
+                        }
+
+                        (Piece::Rook, Color::White) => {
+                            self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][11].key;
+                        }
+                    }
+                }
+
+
+                match (p.piece, p.color) {
+                    (Piece::Pawn, Color::Black) => {
+                         // The index is determined by the piece order in all_piece_types in the generate fn in the Engine
+                        self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][0].key;
+                    }
+
+                    (Piece::Knight, Color::Black) => {
+                        self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][1].key;
+                    }
+
+                    (Piece::Bishop, Color::Black) => {
+                        self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][2].key;
+                    }
+
+                    (Piece::Queen, Color::Black) => {
+                        self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][3].key;
+                    }
+
+                    (Piece::King, Color::Black) => {
+                        self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][4].key;
+                    }
+
+                    (Piece::Rook, Color::Black) => {
+                        self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][5].key;
+                    }
+
+                    (Piece::Pawn, Color::White) => {
+                        self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][6].key;
+                    }
+
+                    (Piece::Knight, Color::White) => {
+                        self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][7].key;
+                    }
+
+                    (Piece::Bishop, Color::White) => {
+                        self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][8].key;
+                    }
+
+                    (Piece::Queen, Color::White) => {
+                        self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][9].key;
+                    }
+
+                    (Piece::King, Color::White) => {
+                        self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][10].key;
+                    }
+
+                    (Piece::Rook, Color::White) => {
+                        self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][11].key;
+                    }
+                };
+            }
+        }
+
+        
 
         self.pieces[row][col as usize] = piece;
     }
