@@ -192,7 +192,9 @@ fn main_uci_thread(producer: Sender<String>, stop: Arc<AtomicBool>) {
 
         match cmd {
             "isready" => {
-                let _ = producer.send("isready".to_string());
+                // let _ = producer.send("isready".to_string());
+                println!("readyok");
+                stdout().flush().unwrap();
             },
             "ucinewgame" => {
                 let _ = producer.send("ucinewgame".to_string());
@@ -210,6 +212,15 @@ fn search_thread(stop_clone: Arc<AtomicBool>, consumer: Receiver<String>) {
     let mut engine = Engine::new();
 
     let mut moves: Vec<String> = vec![];
+
+    /*
+    std::panic::set_hook(Box::new(|info| {
+    use std::io::Write;
+    let mut file = std::fs::OpenOptions::new()
+        .append(true).create(true)
+        .open("panic_log.txt").unwrap();
+        writeln!(file, "{}", info).ok();
+    }));*/
         
     loop {
         let cmd: String = consumer.recv().unwrap(); // blocks waiting for input from the GUI, received in the main thread
@@ -222,7 +233,7 @@ fn search_thread(stop_clone: Arc<AtomicBool>, consumer: Receiver<String>) {
         };
 
         match cmd.as_str() {
-            "isready" => {
+            "isready" => { // this is never reached now, we respond instantly in the main thread like we are supposed to
                 println!("readyok"); // after initializing engine parameters chosed by the GUI
                 stdout().flush().unwrap();
             },

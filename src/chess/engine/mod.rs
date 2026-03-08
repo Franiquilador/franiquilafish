@@ -1,4 +1,5 @@
 use core::panic::PanicInfo;
+use std::thread::sleep;
 use std::time::Instant;
 use std::{clone, i32};
 use std::{fmt::DebugStruct, mem::transmute, vec};
@@ -781,11 +782,16 @@ impl Engine {
         node_count: &mut u64, 
         alpha: i32, beta: i32, 
         board_history: Vec<u64>, ply: i32,
-        stop_flag: Arc<AtomicBool>) -> i32 {
+        stop_flag: Arc<AtomicBool>,
+        seldepth: &mut i32) -> i32 {
 
         *node_count += 1;
 
         let legal_moves = self.get_legal_moves(&board, Color::White); // child nodes/positions
+
+        if ply > *seldepth {
+            *seldepth = ply;
+        }
 
         if legal_moves.is_empty() { // if there are no legal moves now, it is checkmate or stalemate
             if self.is_king_in_check(&board, &Color::White) { // check if white king was checkmated
@@ -797,6 +803,10 @@ impl Engine {
         } else if Self::is_three_fold_draw(board.zobrist_hash, &board_history) {
             return 0;
         } else if depth == 0 {
+            if self.has_captures(&board, &legal_moves) {//quiescence_search: dont stop searching until all captures are resolved
+                return self.quiescence_search_white(board, node_count, alpha, beta, ply, seldepth,
+                start, eng_move_time, stop_flag);
+            }
             return self.eval(&board);
         }
 
@@ -823,11 +833,13 @@ impl Engine {
 
             board_history.push(board_clone.zobrist_hash);
 
-            let v = self.min_value(depth - 1, board_clone.clone(), start, eng_move_time, node_count, 
+            let v = self.min_value(depth - 1, board_clone.clone(), start, 
+            eng_move_time, node_count, 
             alpha, beta, 
             board_history.clone(), 
             ply + 1,
-            Arc::clone(&stop_flag));
+            Arc::clone(&stop_flag),
+            seldepth);
 
             board_history.pop();
 
@@ -854,11 +866,16 @@ impl Engine {
         node_count: &mut u64, 
         alpha: i32, beta: i32, 
         board_history: Vec<u64>, ply: i32,
-        stop_flag: Arc<AtomicBool>) -> i32 {
+        stop_flag: Arc<AtomicBool>,
+        seldepth: &mut i32) -> i32 {
 
         *node_count += 1;
 
         let legal_moves = self.get_legal_moves(&board, Color::Black); // child nodes/positions
+
+        if ply > *seldepth {
+            *seldepth = ply;
+        }
 
         if legal_moves.is_empty() { // if there are no legal moves now, it is checkmate or stalemate
             if self.is_king_in_check(&board, &Color::Black) { // check if black king was checkmated
@@ -870,6 +887,10 @@ impl Engine {
         } else if Self::is_three_fold_draw(board.zobrist_hash, &board_history) {
             return 0;
         } else if depth == 0 {
+            if self.has_captures(&board, &legal_moves) {//quiescence_search: dont stop searching until all captures are resolved
+                return self.quiescence_search_black(board, node_count, alpha, beta, ply, seldepth,
+                start, eng_move_time, stop_flag);
+            }
             return self.eval(&board);
         }
 
@@ -883,7 +904,6 @@ impl Engine {
             }
         }
         
-
         let mut best = i32::MAX;
         let mut beta = beta;
 
@@ -896,11 +916,13 @@ impl Engine {
 
             board_history.push(board_clone.zobrist_hash);
 
-            let v = self.max_value(depth - 1, board_clone.clone(), start, eng_move_time, node_count, 
+            let v = self.max_value(depth - 1, board_clone.clone(), start, 
+            eng_move_time, node_count, 
             alpha, beta, 
             board_history.clone(), 
             ply + 1,
-            Arc::clone(&stop_flag));
+            Arc::clone(&stop_flag),
+            seldepth);
 
             if v < best { // for each move that we do, we return the one that is the most valuable for black
                 best = v;
@@ -909,7 +931,7 @@ impl Engine {
             board_history.pop();
 
             // se a melhor opção deste nó min (desta chamada de min_value na arvore de pesquisa), é menor do que o alpha,
-            // entao este ramo nunca vai ser escolhido pois o best deste no seria sempre menor do que a melhor opção do max acima (o alpha)
+            // entao este ramo nunca vai ser escolhido pois o best deste nó seria sempre menor do que a melhor opção do max acima (o alpha)
             if best <= alpha {
                 return best;
             }
@@ -927,12 +949,14 @@ impl Engine {
         eng_move_time: i32, 
         start: Instant, 
         prev_bm: Move, 
-        stop_flag: Arc<AtomicBool>) -> (Move, i32, bool, u64) {
+        stop_flag: Arc<AtomicBool>,
+        seldepth: &mut i32) -> (Move, i32, bool, u64) {
         let mut best_eval = match self.color {
             Color::Black => i32::MAX,
             Color::White => i32::MIN,
         };
-
+        *seldepth = 1;// reset after every iterative deepening call
+        
         let mut legal_moves = self.get_legal_moves(&board, maximizing_player);
 
         self.order_moves(&mut legal_moves, prev_bm); 
@@ -979,24 +1003,22 @@ impl Engine {
                     start, 
                     eng_move_time, 
                     &mut total_nodes, 
-                    alpha, 
-                    beta,
+                    alpha, beta,
                     board_hist_clone.clone(),
                     ply,
-                    Arc::clone(&stop_flag)
-                )
+                    Arc::clone(&stop_flag),
+                    seldepth)
             } else { // black just played, now its white to simulate a move
                 self.max_value(
                     depth - 1, 
                     board_clone.clone(), 
                     start, eng_move_time, 
                     &mut total_nodes, 
-                    alpha, 
-                    beta,
+                    alpha, beta,
                     board_hist_clone.clone(),
                     ply,
-                    Arc::clone(&stop_flag)
-                )
+                    Arc::clone(&stop_flag),
+                    seldepth)
             };
 
             board_hist_clone.pop();
@@ -1026,10 +1048,11 @@ impl Engine {
         (best_move, best_eval, is_full_depth, total_nodes)
     }
 
-    fn search_aux(&self, depth: &mut i32/*, board_clone: Board*/, stop_flag: Arc<AtomicBool>, eng_move_time: i32,
+    fn search_aux(&self, depth: &mut i32, stop_flag: Arc<AtomicBool>, eng_move_time: i32,
         start: Instant,
         b_m: &mut Option<Move>,
-        info_printed: &mut bool
+        info_printed: &mut bool,
+        seldepth: &mut i32
     ) {
         let mut eval: i32 = -1;
         let mut is_full_depth: bool;
@@ -1039,7 +1062,8 @@ impl Engine {
         let mut nodes: u64 = 0;
 
         match self.get_best_move(*depth, self.board.clone(), self.color, 
-        eng_move_time, start, b_m.unwrap(), Arc::clone(&stop_flag)) {
+        eng_move_time, start, b_m.unwrap(), Arc::clone(&stop_flag),
+        seldepth) {
             (m, e, i_f_d, n) => {
                 duration_ms = search_start.elapsed().as_millis();
                             
@@ -1066,7 +1090,7 @@ impl Engine {
                 0
             };
 
-            println!("info depth {depth} time {duration_ms} nodes {nodes} score cp {eval} nps {nps}");
+            println!("info depth {depth} seldepth {seldepth} time {duration_ms} nodes {nodes} score cp {eval} nps {nps}");
         };
                               
         *depth += 1; // iterative deepening
@@ -1088,6 +1112,8 @@ impl Engine {
 
         let mut depth = 1;
 
+        let mut seldepth = 1;
+
         let mut best_move = String::new();
         let mut b_m: Option<Move> = None;
         
@@ -1099,7 +1125,7 @@ impl Engine {
             let mut board_clone = self.board.clone();
             self.simulate_move(&b_m.unwrap(), &mut board_clone, &self.color);
             let eval = if self.color == Color::Black { -self.eval(&board_clone) } else { self.eval(&board_clone) };
-            println!("info depth 1 score cp {eval} nodes 1 time 0 nps 0"); // to remove warning in fastchess
+            println!("info depth 1 seldepth 1 score cp {eval} nodes 1 time 0 nps 0"); // to remove warning in fastchess
 
         } else if legal_moves.len() == 0 {
             println!("panicccccccc, no legal moves in the search");
@@ -1115,13 +1141,13 @@ impl Engine {
                 while (start.elapsed().as_millis() < eng_move_time as u128 && !stop_flag.load(Ordering::Relaxed)) || depth == 1 {
                     self.search_aux(&mut depth, Arc::clone(&stop_flag), 
                     eng_move_time, start, 
-                    &mut b_m, &mut info_printed)
+                    &mut b_m, &mut info_printed, &mut seldepth)
                 }
             } else {// go infinite
                 while !stop_flag.load(Ordering::Relaxed) || depth == 1 {
                     self.search_aux(&mut depth, Arc::clone(&stop_flag), 
                     eng_move_time, start, 
-                    &mut b_m, &mut info_printed)
+                    &mut b_m, &mut info_printed, &mut seldepth)
                 }
             }
 
@@ -1130,7 +1156,7 @@ impl Engine {
             if !info_printed {
                 self.simulate_move(&b_m.unwrap(), &mut b_clone, &self.color);
                 let eval = if self.color == Color::Black { -self.eval(&b_clone) } else { self.eval(&b_clone) };
-                println!("info depth 1 score cp {eval} nodes 1 time 0 nps 0");
+                println!("info depth 1 seldepth 1 score cp {eval} nodes 1 time 0 nps 0");
             };
         }
 
@@ -1202,6 +1228,175 @@ impl Engine {
         }
     }
 
+    fn quiescence_search_black(&self, board: Board, node_count: &mut u64, 
+        alpha: i32, beta: i32, ply: i32, seldepth: &mut i32,
+        start: Instant, eng_move_time: i32, stop_flag: Arc<AtomicBool>) -> i32 {
+
+        *node_count += 1;
+
+        if eng_move_time > 0 {
+            if start.elapsed().as_millis() > eng_move_time as u128 || stop_flag.load(Ordering::Relaxed) {
+                return self.eval(&board);
+            }
+        } else if eng_move_time == 0 { // go infinite
+            if stop_flag.load(Ordering::Relaxed) {
+                return self.eval(&board);
+            }
+        }
+
+        if ply > *seldepth {
+            *seldepth = ply;
+        }
+
+        let stand_pat = self.eval(&board); // means "keep the everything as is": it is very important in case making the capture is worse than doing nothing, since we are only considering captures in the search 
+        // Example: our a queen captures a pawn, but then the opponent recaptures with a rook. 
+        // we would have been better off not capturing at all
+
+        // the oponents best choice (alpha), is never going to choose this branch 
+        // because stand_pat is only going to get smaller, and its already not good for them
+        if stand_pat <= alpha {
+            return stand_pat;
+        }
+
+        let captures = self.generate_captures(&board, Color::Black);
+
+        if captures.is_empty() { // no captures left, return eval
+            return self.eval(&board);
+        }
+
+        let mut best = stand_pat; //our best option is doing nothing, since we are only considering captures in this search
+
+        let mut beta = beta.min(stand_pat);// we are only going to chose captures that are better than doing nothing
+
+        for c in &captures {
+            let mut board_clone = board.clone();
+
+            self.simulate_move(c, &mut board_clone, &Color::Black); // do a move/go down into a branch
+
+            let v = self.quiescence_search_white(board_clone.clone(), 
+             node_count, 
+            alpha, beta,  
+            ply + 1, seldepth, start, eng_move_time, 
+            Arc::clone(&stop_flag));
+
+            if v < best { // for each move that we do, we return the one that is the most valuable for black
+                best = v;
+            }
+
+            // se a melhor opção deste nó min (desta chamada de min_value na arvore de pesquisa), é menor do que o alpha,
+            // entao este ramo nunca vai ser escolhido pois o best deste nó seria sempre menor do que a melhor opção do max acima (o alpha)
+            if best <= alpha {
+                return best;
+            }
+
+            if best < beta {
+                beta = best;
+            }
+        }
+
+        best
+    }
+
+    fn quiescence_search_white(&self, board: Board, node_count: &mut u64, 
+        alpha: i32, beta: i32, ply: i32, seldepth: &mut i32,
+        start: Instant, eng_move_time: i32, stop_flag: Arc<AtomicBool>) -> i32 {
+
+        *node_count += 1;
+
+        if eng_move_time > 0 {
+            if start.elapsed().as_millis() > eng_move_time as u128 || stop_flag.load(Ordering::Relaxed) {
+                return self.eval(&board);
+            }
+        } else if eng_move_time == 0 { // go infinite
+            if stop_flag.load(Ordering::Relaxed) {
+                return self.eval(&board);
+            }
+        }
+
+        if ply > *seldepth {
+            *seldepth = ply;
+        }
+
+        let stand_pat = self.eval(&board); // means "keep the everything as is": it is very important in case making the capture is worse than doing nothing, since we are only considering captures from now on 
+        // Example: our a queen captures a pawn, but then the opponent recaptures with a rook. 
+        // we would have been better off not capturing at all
+
+        // the oponents best choice (beta), is never going to choose this branch 
+        // because stand_pat is only going to get bigger, and its already not good for them
+        if stand_pat >= beta {
+            return stand_pat;
+        }
+
+        let captures = self.generate_captures(&board, Color::White);
+
+        if captures.is_empty() { // no captures left, return eval
+            return self.eval(&board);
+        }
+
+        let mut best = stand_pat; //our best option is doing nothing, since we are only considering captures in this search
+
+        let mut alpha = alpha.max(stand_pat);// we are only going to chose captures that are better than doing nothing
+
+        for c in &captures {
+            let mut board_clone = board.clone();
+
+            self.simulate_move(c, &mut board_clone, &Color::White); // do a move/go down into a branch
+
+            let v = self.quiescence_search_black(board_clone.clone(), 
+             node_count, 
+            alpha, beta,  
+            ply + 1, seldepth, start, eng_move_time,
+            Arc::clone(&stop_flag));
+
+            if v > best { // for capture that we do, we return the one that is the most valuable for white
+                best = v;
+            }
+
+            // se o beta (melhor opção do min, é menor ou igual do que o best deste node max (desta chamada de max_value))
+            // entao não vale a pena continuar pois este ramo nunca vai ser escolhido, (pois o min vai escolher o beta que era a sua melhor opção anterior)
+            if best >= beta { 
+                return best;
+            }
+
+            if best > alpha {
+                alpha = best;
+            }
+        }
+
+        best
+    }
+
+    fn generate_captures(&self, board: &Board, color: Color) -> Vec<Move> {
+        let mut captures = self.get_legal_moves(board, color);
+
+        for c in &captures.clone() {
+            if !self.is_capture(board, c) {
+                captures.retain(|x| x != c);
+            }
+        }
+
+        captures
+    }
+
+    fn has_captures(&self, board: &Board, legal_moves: &Vec<Move>) -> bool {
+        for m in legal_moves {
+            if self.is_capture(board, m) {
+                return true;
+            }
+        }
+
+        false
+    }
+
+    fn is_capture(&self, board: &Board, m: &Move) -> bool {
+        let final_square_piece = board.get_piece_at_square(&m.final_square());
+
+        match final_square_piece {
+            None => { false }
+            Some(_) => { true }
+        }
+    }
+
     fn is_three_fold_draw(hash: u64, board_history: &Vec<u64>) -> bool {
         let mut repetition_count = 0;
         let is_draw = false;
@@ -1233,6 +1428,7 @@ impl Engine {
                 if p.color != self.current_player {
                     true
                 } else {
+                    println!("PANNIC, cant capture friendly pieces");
                     panic!("cant capture friendly pieces");
                 }
             }

@@ -23,3 +23,11 @@ lbound -2.94 - if llr hits this → H0 accepted (engines1 is not an improvement,
 ubound 2.94 - if llr hits this → H1 accepted (one is better)
 
 Don't set concurrency higher than half of the number of cpu cores/threads so that the engines dont starve each other of cpu time, making the results inacurate. For my vitus it can be maximum 8
+
+Pentanomial explained:
+Ptnml(0-2): [0, 1, 9, 11, 8]
+Both games lost (0 points) - 0
+One loss one draw (0.5 points) - 1
+Both drew, or one win one loss (1 point) - 9
+One win one draw (1.5 points) - 11
+Both games won (2 points) - 8
