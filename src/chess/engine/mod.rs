@@ -1,4 +1,5 @@
 use core::panic::PanicInfo;
+use core::time;
 use std::thread::sleep;
 use std::time::Instant;
 use std::{clone, i32};
@@ -34,6 +35,7 @@ pub struct PlayerTimes { // in miliseconds
     pub btime: i32,
     pub winc: i32,
     pub binc: i32,
+    pub movetime: i32,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -735,12 +737,22 @@ impl Engine {
     fn calculate_time(&self, times: &PlayerTimes) -> i32 {
         match self.color { // always plan thinking there are still 40 moves to go
             Color::Black => {
-                let remaining = times.btime;
+                let remaining: i32;
+                if times.movetime > 0 {
+                    return times.movetime;
+                } else {
+                    remaining = times.btime;
+                };
                 let time = (remaining / 40) + times.binc / 2; // add the increment
                 time.max(100)
             }
             Color::White => {
-                let remaining = times.wtime;
+                let remaining: i32;
+                if times.movetime > 0 {
+                    return times.movetime;
+                } else {
+                    remaining = times.wtime;
+                };
                 let time = (remaining / 40) + times.winc / 2;
                 time.max(100)
             }
@@ -1090,7 +1102,9 @@ impl Engine {
                 0
             };
 
-            println!("info depth {depth} seldepth {seldepth} time {duration_ms} nodes {nodes} score cp {eval} nps {nps}");
+            let bm = b_m.unwrap().to_uci();
+
+            println!("info depth {depth} seldepth {seldepth} time {duration_ms} nodes {nodes} score cp {eval} nps {nps} pv {bm}");
         };
                               
         *depth += 1; // iterative deepening
@@ -1125,7 +1139,8 @@ impl Engine {
             let mut board_clone = self.board.clone();
             self.simulate_move(&b_m.unwrap(), &mut board_clone, &self.color);
             let eval = if self.color == Color::Black { -self.eval(&board_clone) } else { self.eval(&board_clone) };
-            println!("info depth 1 seldepth 1 score cp {eval} nodes 1 time 0 nps 0"); // to remove warning in fastchess
+            let bm = b_m.unwrap().to_uci();
+            println!("info depth 1 seldepth 1 score cp {eval} nodes 1 time 0 nps 0 pv {bm}"); // to remove warning in fastchess
 
         } else if legal_moves.len() == 0 {
             println!("panicccccccc, no legal moves in the search");
@@ -1156,7 +1171,8 @@ impl Engine {
             if !info_printed {
                 self.simulate_move(&b_m.unwrap(), &mut b_clone, &self.color);
                 let eval = if self.color == Color::Black { -self.eval(&b_clone) } else { self.eval(&b_clone) };
-                println!("info depth 1 seldepth 1 score cp {eval} nodes 1 time 0 nps 0");
+                let bm = b_m.unwrap().to_uci();
+                println!("info depth 1 seldepth 1 score cp {eval} nodes 1 time 0 nps 0 pv {bm}");
             };
         }
 

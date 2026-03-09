@@ -230,6 +230,7 @@ fn search_thread(stop_clone: Arc<AtomicBool>, consumer: Receiver<String>) {
             btime: 0,
             winc: 0,
             binc: 0,
+            movetime: 0,
         };
 
         match cmd.as_str() {
@@ -312,32 +313,24 @@ fn search_thread(stop_clone: Arc<AtomicBool>, consumer: Receiver<String>) {
                         .and_then(|window| window[1].parse::<i32>().ok())
                         .unwrap_or(0);
 
+                        let movetime = parts.windows(2) // has to have a new iterator like this, instead of reusing pairs
+                        .find(|window| window[0] == "movetime")
+                        .and_then(|window| window[1].parse::<i32>().ok())
+                        .unwrap_or(0);
+
                         times = PlayerTimes {
                                     wtime: wtime,
                                     btime: btime,
                                     winc: winc,
                                     binc: binc,
+                                    movetime: movetime,
                                 };
                         let mut time = None; // we assume go infinite was sent until proven otherwise
-                        if btime != 0 && wtime != 0 { 
+                        if (btime != 0 && wtime != 0) || movetime != 0 { 
                             time = Some(times);
                         }
 
-                        // let color = match moves.len() % 2 == 0 { // engine color
-                            // true => Color::White,
-                            // false => Color::Black,
-                        // };
-                        // println!("{:?}", moves);
-                        // stdout().flush().unwrap();
-
-                        // println!("{:?}", color);
-                        // stdout().flush().unwrap();
-
-                        // engine.set_color(color);
                         engine.set_color(*engine.get_active_player());
-                        
-                        // println!("das");
-                        // stdout().flush().unwrap();
 
                         let best_move = engine.search(moves.clone(), time, Arc::clone(&stop_clone));
                             
