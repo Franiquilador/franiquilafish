@@ -3,7 +3,7 @@ use franiquilafish::chess::{
 };
 use franiquilafish::chess::engine::PlayerTimes;
 
-use std::{io::stdout, iter::TakeWhile, os::windows};
+use std::{io::stdout, iter::TakeWhile};
 use std::{io::{self, Write, stdin}, sync::mpsc::{Receiver, Sender}};
 
 use std::thread;
