@@ -1459,14 +1459,15 @@ impl Engine {
                 match p {
                     None => continue,
                     Some(piece) => {
-                        if piece.piece == Piece::Pawn && board.get_en_passant().is_some() {
+
+                        if piece.piece == Piece::Pawn && board.get_en_passant().is_some() {// to not count the ep ghos t
                             let ep_square = board.get_en_passant().unwrap();
 
                             if ep_square.rank == (i as i8) + 1 && board::file_to_num(ep_square.file) == j as u8 {
                                 continue;
                             }
                         }
-                        eval += piece.value();
+                        eval += piece.value(i, j);
 
                         // if (j == 3 || j == 4) && (i == 3 || i == 4) { // bonus for being in the 4 central squares
                         //     match piece.color {

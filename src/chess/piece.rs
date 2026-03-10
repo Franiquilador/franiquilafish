@@ -1,3 +1,5 @@
+use std::usize;
+
 use crate::chess::move_square::{Move, Square, Promotion};
 // use crate::chess::game::Color;
 use crate::chess::engine::Color;
@@ -19,29 +21,82 @@ pub struct ChessPiece {
     pub piece: Piece,
 }
 
+const KNIGHT_TABLE: [[i32; 8]; 8] = [
+    [-15, -10, -5, -5, -5, -5, -10, -15],
+    [-10, 0, 0, 0, 0, 0, 0, -10],
+    [-5, 0, 5, 5, 5, 5, 0, -5],
+    [-5, 0, 5, 10, 10, 5, 0, -5],
+    [-5, 0, 5, 10, 10, 5, 0, -5],
+    [-5, 0, 5, 5, 5, 5, 0, -5],
+    [-10, 0, 0, 0, 0, 0, 0, -10],
+    [-15, -10, -5, -5, -5, -5, -10, -15],
+];
+
+const WHITE_KING_TABLE: [[i32; 8]; 8] = [
+    [0, 5, 5, -5, -5, -5, 5, 0],
+    [0, 0, -5, -5, -5, -5, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0],
+];
+
+
+const BLACK_KING_TABLE: [[i32; 8]; 8] = [
+    [0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 5, 5, 5, 5, 0, 0],
+    [0, -5, -5, 5, 5, 5, -5, 0],
+];
+
+// const BLACK_KNIGHT: [[i32; 8]; 8] = -KNIGHT_TABLE;
+
 impl ChessPiece {
-    pub fn value(&self) -> i32 {
-        match self.color {
-            Color::White => {
-                match self.piece {
-                    Piece::Rook => 500,
-                    Piece::Knight => 300,
-                    Piece::Bishop => 300,
-                    Piece::Queen => 900,
-                    Piece::King => 0,
-                    Piece::Pawn => 100,
+    pub fn value(&self, row: usize, col: usize) -> i32 {
+        let mut value: i32 = 0;
+        
+        match self.piece {
+            Piece::Rook => value += 500,
+            Piece::Knight => value += 300,
+            Piece::Bishop => value += 300,
+            Piece::Queen => value += 900,
+            Piece::King => value += 0,
+            Piece::Pawn => value += 100,
+        };
+
+        if self.color == Color::Black {
+            value = -value;
+        };
+
+        value += self.piece_square_table(row, col);
+
+        value
+    }
+
+    fn piece_square_table(&self, row: usize, col: usize) -> i32 {
+        match self.piece {
+            Piece::King => {
+                match self.color {
+                    Color::Black => BLACK_KING_TABLE[row][col],
+                    Color::White => WHITE_KING_TABLE[row][col],
                 }
-            },
-            Color::Black => {
-                match self.piece {
-                    Piece::Rook => -500,
-                    Piece::Knight => -300,
-                    Piece::Bishop => -300,
-                    Piece::Queen => -900,
-                    Piece::King => 0,
-                    Piece::Pawn => -100,
+            }
+
+            Piece::Knight => {
+                if self.color == Color::Black {
+                    -KNIGHT_TABLE[row][col]
+                } else {
+                    KNIGHT_TABLE[row][col]
                 }
-            },
+            }
+
+            _ => 0,
         }
     }
 
