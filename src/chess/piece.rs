@@ -1,6 +1,6 @@
 use std::usize;
 
-use crate::chess::move_square::{Move, Square, Promotion};
+use crate::chess::move_square::{Move, Promotion, Square};
 // use crate::chess::game::Color;
 use crate::chess::engine::Color;
 
@@ -43,7 +43,6 @@ const WHITE_KING_TABLE: [[i32; 8]; 8] = [
     [-10, -17, -18, -20, -20, -18, -17, -10],
 ];
 
-
 const BLACK_KING_TABLE: [[i32; 8]; 8] = [
     [10, 17, 18, 20, 20, 18, 17, 10],
     [10, 17, 18, 20, 20, 18, 17, 10],
@@ -58,7 +57,7 @@ const BLACK_KING_TABLE: [[i32; 8]; 8] = [
 impl ChessPiece {
     pub fn value(&self, row: usize, col: usize) -> i32 {
         let mut value: i32 = 0;
-        
+
         match self.piece {
             Piece::Rook => value += 500,
             Piece::Knight => value += 300,
@@ -79,12 +78,10 @@ impl ChessPiece {
 
     fn piece_square_table(&self, row: usize, col: usize) -> i32 {
         match self.piece {
-            Piece::King => {
-                match self.color {
-                    Color::Black => BLACK_KING_TABLE[row][col],
-                    Color::White => WHITE_KING_TABLE[row][col],
-                }
-            }
+            Piece::King => match self.color {
+                Color::Black => BLACK_KING_TABLE[row][col],
+                Color::White => WHITE_KING_TABLE[row][col],
+            },
 
             Piece::Knight => {
                 if self.color == Color::Black {
@@ -98,63 +95,72 @@ impl ChessPiece {
         }
     }
 
-    pub fn all_moves(&self, pos: &Square) -> Vec<Move> { // calcula os movimentos potenciais de cada peça, a maior parte sao ilegais
+    pub fn all_moves(&self, pos: &Square) -> Vec<Move> {
+        // calcula os movimentos potenciais de cada peça, a maior parte sao ilegais
         let mut moves = vec![];
 
         match self.piece {
             Piece::Pawn => {
                 match self.color {
                     Color::Black => {
-                        match pos.offset(0, -2) { //andar 2 para a frente
+                        match pos.offset(0, -2) {
+                            //andar 2 para a frente
                             Some(s) => moves.push(Move::from_squares(*pos, s, None)),
                             None => {}
                         };
 
-                        match pos.offset(0, -1) { //andar 1 para a frente
+                        match pos.offset(0, -1) {
+                            //andar 1 para a frente
                             Some(s) => {
                                 moves.push(Move::from_squares(*pos, s, None));
-                            },
+                            }
                             None => {}
                         };
-                
+
                         //comer na diagonal direita
-                        match pos.offset(1, -1) { // file offset of one means "b" if pos is in "a"
+                        match pos.offset(1, -1) {
+                            // file offset of one means "b" if pos is in "a"
                             Some(s) => moves.push(Move::from_squares(*pos, s, None)),
                             None => {}
                         };
 
-                        match pos.offset(-1, -1) { //comer na diagonal esquerda
+                        match pos.offset(-1, -1) {
+                            //comer na diagonal esquerda
                             Some(s) => moves.push(Move::from_squares(*pos, s, None)),
                             None => {}
                         };
-                    },
+                    }
 
                     Color::White => {
-                        match pos.offset(0, 2) { //andar 2 para a frente
+                        match pos.offset(0, 2) {
+                            //andar 2 para a frente
                             Some(s) => moves.push(Move::from_squares(*pos, s, None)),
                             None => {}
                         };
 
-                        match pos.offset(0, 1) { //andar 1 para a frente
+                        match pos.offset(0, 1) {
+                            //andar 1 para a frente
                             Some(s) => {
                                 moves.push(Move::from_squares(*pos, s, None));
-                            },
+                            }
                             None => {}
                         };
-                
+
                         //comer na diagonal direita
-                        match pos.offset(1, 1) { // file offset of one means "b" if pos is in "a"
+                        match pos.offset(1, 1) {
+                            // file offset of one means "b" if pos is in "a"
                             Some(s) => moves.push(Move::from_squares(*pos, s, None)),
                             None => {}
                         };
 
-                        match pos.offset(-1, 1) { //comer na diagonal esquerda
+                        match pos.offset(-1, 1) {
+                            //comer na diagonal esquerda
                             Some(s) => moves.push(Move::from_squares(*pos, s, None)),
                             None => {}
                         };
-                    },
+                    }
                 }
-            },
+            }
 
             Piece::Knight => {
                 match pos.offset(-1, 2) {
@@ -293,12 +299,14 @@ impl ChessPiece {
             }
 
             Piece::King => {
-                match pos.offset(0, 1) { // cima
+                match pos.offset(0, 1) {
+                    // cima
                     Some(s) => moves.push(Move::from_squares(*pos, s, None)),
                     None => {}
                 };
 
-                match pos.offset(1, 0) { // direita
+                match pos.offset(1, 0) {
+                    // direita
                     Some(s) => moves.push(Move::from_squares(*pos, s, None)),
                     None => {}
                 };
@@ -308,12 +316,14 @@ impl ChessPiece {
                     None => {}
                 };
 
-                match pos.offset(0, -1) { // baixo
+                match pos.offset(0, -1) {
+                    // baixo
                     Some(s) => moves.push(Move::from_squares(*pos, s, None)),
                     None => {}
                 };
 
-                match pos.offset(-1, 0) { // esquerda
+                match pos.offset(-1, 0) {
+                    // esquerda
                     Some(s) => moves.push(Move::from_squares(*pos, s, None)),
                     None => {}
                 };
@@ -333,9 +343,9 @@ impl ChessPiece {
                     None => {}
                 };
             }
-            _ => { 
+            _ => {
                 // println!("faltam calcular moves de outras peças")
-            },
+            }
         };
 
         moves

@@ -1,18 +1,17 @@
 pub mod chess;
 
-
 /// Adds two numbers together.
-/// 
+///
 /// This function computes the sum f(a, b) = a + b
-/// 
+///
 /// cargo doc will render everything inside src/ that belongs to the library crate
-/// 
+///
 /// this will be rendered as markdown in the browser by rustdoc crate, bellow is a seperator and then a header
-/// 
+///
 /// ---
-/// 
+///
 /// this phrase apears rendered because it is a doc
-//  this one is just a code comment, not documentation 
+//  this one is just a code comment, not documentation
 
 /// # Example
 /// ```
@@ -20,7 +19,7 @@ pub mod chess;
 /// use franiquilafish::add;
 /// let result = add(2, 2); // rust comment apearing in the markdown
 /// assert_eq!(result, 4);
-/// 
+///
 /// ```
 pub fn add(left: u64, right: u64) -> u64 {
     left + right

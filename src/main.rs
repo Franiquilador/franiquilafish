@@ -1,15 +1,23 @@
-use franiquilafish::chess::{
-    engine::{Color, Engine, GameState}, move_square::Move, piece::{ChessPiece as CP, ChessPiece, Piece as P}, start_match
-};
 use franiquilafish::chess::engine::PlayerTimes;
+use franiquilafish::chess::{
+    engine::{Color, Engine, GameState},
+    move_square::Move,
+    piece::{ChessPiece as CP, ChessPiece, Piece as P},
+    start_match,
+};
 
 use std::{io::stdout, iter::TakeWhile};
-use std::{io::{self, Write, stdin}, sync::mpsc::{Receiver, Sender}};
+use std::{
+    io::{self, Write, stdin},
+    sync::mpsc::{Receiver, Sender},
+};
 
-use std::thread;
 use std::sync::mpsc;
-use std::sync::{Arc, Mutex, atomic::{Ordering, AtomicBool}};
-
+use std::sync::{
+    Arc, Mutex,
+    atomic::{AtomicBool, Ordering},
+};
+use std::thread;
 
 enum Command {
     Help,
@@ -22,7 +30,6 @@ enum Command {
 const HELP: &str = "h";
 const NEW_GAME: &str = "n";
 const QUIT: &str = "q";
-
 
 impl Command {
     // reads input as &str and returns an enum for pattern matching
@@ -37,11 +44,12 @@ impl Command {
     }
 
     // fn get_move_from_uci(input: &str) -> Option<Move> {
-        // Move::from_uci(input)
+    // Move::from_uci(input)
     // }
 }
 
-enum UciCommand { // all possible comands from the GUI using the UCI protocol
+enum UciCommand {
+    // all possible comands from the GUI using the UCI protocol
     IsReady,
     UciNewGame,
     Quit,
@@ -60,12 +68,10 @@ impl UciCommand {
     }
 }
 
-
-
 // time, serde
 fn main() {
     // let mut engine = Engine::new();
-    /* 
+    /*
     println!("This is command line chess!");
     println!("Type '{HELP}' for commands");
 
@@ -101,7 +107,7 @@ fn main() {
         }
     }
     */
-    
+
     let mut input = String::new();
 
     stdin().read_line(&mut input).unwrap();
@@ -112,22 +118,20 @@ fn main() {
         "uci" => uci(),
         _ => {
             // println!("Unknown command, type {HELP} for help"),
-
-        },
+        }
     }
-/*
+    /*
     let mut a = [[1, 4], [2, 0]];
 
     a.reverse();
 
     println!("{:?}", a);
-    
-    
+
+
     let t = 'a'..='h';
     for c in t {
         print!("{}", c);
     }*/
-
 }
 
 fn process_move(engine: &mut Engine, m: Move) {
@@ -144,13 +148,13 @@ fn process_move(engine: &mut Engine, m: Move) {
 
 fn process_command(command: Command, engine: &mut Engine) {
     match command {
-            Command::Help => process_help(),
-            Command::Uci => uci(),
-            Command::Quit => engine.close(),
-            Command::NewGame => process_new(engine),
-            Command::Unknown(cmd) => {
-                // println!("Unknow command '{cmd}'. Type '{HELP}' for commands");
-            },
+        Command::Help => process_help(),
+        Command::Uci => uci(),
+        Command::Quit => engine.close(),
+        Command::NewGame => process_new(engine),
+        Command::Unknown(cmd) => {
+            // println!("Unknow command '{cmd}'. Type '{HELP}' for commands");
+        }
     }
 }
 
@@ -195,15 +199,17 @@ fn main_uci_thread(producer: Sender<String>, stop: Arc<AtomicBool>) {
                 // let _ = producer.send("isready".to_string());
                 println!("readyok");
                 stdout().flush().unwrap();
-            },
+            }
             "ucinewgame" => {
                 let _ = producer.send("ucinewgame".to_string());
-            },
-            "stop" => { stop.store(true, Ordering::Relaxed); },  //atomicbool operation guarantees the flag is updated by only one thread at a time, since the flag is shared between threads
+            }
+            "stop" => {
+                stop.store(true, Ordering::Relaxed);
+            } //atomicbool operation guarantees the flag is updated by only one thread at a time, since the flag is shared between threads
             "quit" => break,
             line => {
                 producer.send(line.to_string());
-            },
+            }
         }
     }
 }
@@ -221,10 +227,10 @@ fn search_thread(stop_clone: Arc<AtomicBool>, consumer: Receiver<String>) {
         .open("panic_log.txt").unwrap();
         writeln!(file, "{}", info).ok();
     }));*/
-        
+
     loop {
         let cmd: String = consumer.recv().unwrap(); // blocks waiting for input from the GUI, received in the main thread
-            
+
         let mut times = PlayerTimes {
             wtime: 0,
             btime: 0,
@@ -234,15 +240,16 @@ fn search_thread(stop_clone: Arc<AtomicBool>, consumer: Receiver<String>) {
         };
 
         match cmd.as_str() {
-            "isready" => { // this is never reached now, we respond instantly in the main thread like we are supposed to
+            "isready" => {
+                // this is never reached now, we respond instantly in the main thread like we are supposed to
                 println!("readyok"); // after initializing engine parameters chosed by the GUI
                 stdout().flush().unwrap();
-            },
+            }
             "ucinewgame" => {
                 moves.clear();
                 engine.start();
                 engine.clear();
-            },
+            }
             line => {
                 let parts: Vec<_> = line.split_whitespace().collect();
 
@@ -251,35 +258,39 @@ fn search_thread(stop_clone: Arc<AtomicBool>, consumer: Receiver<String>) {
                 }
 
                 let mut pairs = parts.windows(2);
-                
+
                 match parts[0] {
-                    "perft" => { 
+                    "perft" => {
                         let max_depth = parts[1].parse().expect("error parsing str");
                         engine.perft(max_depth);
-                    },
-                    "wp" => { //webperft
+                    }
+                    "wp" => {
+                        //webperft
                         let depth = parts[1].parse().expect("error parsing str");
                         engine.web_perft(depth);
                     }
                     "position" => {
                         let fen_or_startpos_opt = parts.iter().find(|s| **s == "fen");
 
-                        let is_fen = match fen_or_startpos_opt { // if its not fen it must be startpos
+                        let is_fen = match fen_or_startpos_opt {
+                            // if its not fen it must be startpos
                             None => false,
                             Some(_) => true,
                         };
 
                         if is_fen {
-                            let fen_parts = parts.iter()
-                            .skip_while(|s| **s != "fen")
-                            .skip(1) // skip "fen" itself
-                            .take_while(|s| **s != "moves")
-                            .cloned()
-                            .collect::<Vec<_>>();
+                            let fen_parts = parts
+                                .iter()
+                                .skip_while(|s| **s != "fen")
+                                .skip(1) // skip "fen" itself
+                                .take_while(|s| **s != "moves")
+                                .cloned()
+                                .collect::<Vec<_>>();
                             engine.load_from_fen(fen_parts);
                         } // do not need an else because the default Engine::new() already builds a board from the startpos
 
-                        moves = parts.iter()
+                        moves = parts
+                            .iter()
                             .skip_while(|s| s != &&"moves")
                             .skip(1) // skip moves word itself
                             .map(|s| s.to_string())
@@ -288,62 +299,62 @@ fn search_thread(stop_clone: Arc<AtomicBool>, consumer: Receiver<String>) {
                         // println!("stored moves {:?}", moves);
                         // stdout().flush().unwrap();
 
-                        engine.apply_moves(moves.clone(), is_fen);// apply oponents moves
-                    },
+                        engine.apply_moves(moves.clone(), is_fen); // apply oponents moves
+                    }
                     "go" => {
                         stop_clone.store(false, Ordering::Relaxed); // reset the stop command in a new search
 
                         let wtime = pairs
-                        .find(|window| window[0] == "wtime")
-                        .and_then(|window| window[1].parse::<i32>().ok())
-                        .unwrap_or(0); // 0 if there is no wtime word, instead of panicking
+                            .find(|window| window[0] == "wtime")
+                            .and_then(|window| window[1].parse::<i32>().ok())
+                            .unwrap_or(0); // 0 if there is no wtime word, instead of panicking
 
                         let btime = pairs
-                        .find(|window| window[0] == "btime")
-                        .and_then(|window| window[1].parse::<i32>().ok())
-                        .unwrap_or(0);
+                            .find(|window| window[0] == "btime")
+                            .and_then(|window| window[1].parse::<i32>().ok())
+                            .unwrap_or(0);
 
                         let winc = pairs
-                        .find(|window| window[0] == "winc")
-                        .and_then(|window| window[1].parse::<i32>().ok())
-                        .unwrap_or(0);
+                            .find(|window| window[0] == "winc")
+                            .and_then(|window| window[1].parse::<i32>().ok())
+                            .unwrap_or(0);
 
                         let binc = pairs
-                        .find(|window| window[0] == "binc")
-                        .and_then(|window| window[1].parse::<i32>().ok())
-                        .unwrap_or(0);
+                            .find(|window| window[0] == "binc")
+                            .and_then(|window| window[1].parse::<i32>().ok())
+                            .unwrap_or(0);
 
-                        let movetime = parts.windows(2) // has to have a new iterator like this, instead of reusing pairs
-                        .find(|window| window[0] == "movetime")
-                        .and_then(|window| window[1].parse::<i32>().ok())
-                        .unwrap_or(0);
+                        let movetime = parts
+                            .windows(2) // has to have a new iterator like this, instead of reusing pairs
+                            .find(|window| window[0] == "movetime")
+                            .and_then(|window| window[1].parse::<i32>().ok())
+                            .unwrap_or(0);
 
                         times = PlayerTimes {
-                                    wtime: wtime,
-                                    btime: btime,
-                                    winc: winc,
-                                    binc: binc,
-                                    movetime: movetime,
-                                };
+                            wtime: wtime,
+                            btime: btime,
+                            winc: winc,
+                            binc: binc,
+                            movetime: movetime,
+                        };
                         let mut time = None; // we assume go infinite was sent until proven otherwise
-                        if (btime != 0 && wtime != 0) || movetime != 0 { 
+                        if (btime != 0 && wtime != 0) || movetime != 0 {
                             time = Some(times);
                         }
 
                         engine.set_color(*engine.get_active_player());
 
                         let best_move = engine.search(moves.clone(), time, Arc::clone(&stop_clone));
-                            
+
                         print!("bestmove {best_move}\n");
                         stdout().flush().unwrap();
-                        },
-                        _ => { /*panic!("empty first string");*/ }, //  unreachable
                     }
-                },
+                    _ => { /*panic!("empty first string");*/ } //  unreachable
+                }
             }
         }
+    }
 }
-
 
 fn id_outputs() {
     println!("id name Diesel");
@@ -395,22 +406,21 @@ fn print_board(mut pieces: [[Option<ChessPiece>; 8]; 8], active_player: &Color) 
                         P::Bishop => print!(" b |"),
                         P::Queen => print!(" q |"),
                         P::King => print!(" k |"),
-                        P::Pawn => print!(" p |"),    
-                    }
+                        P::Pawn => print!(" p |"),
+                    },
                 },
             }
         }
         println!();
         println!("  +---+---+---+---+---+---+---+---+");
     }
-    
+
     println!("    a   b   c   d   e   f   g   h");
-    
+
     println!();
     println!("Capital letters are white");
     match active_player {
         Color::White => print!("White to play: "),
         Color::Black => print!("Black to play: "),
     }
-    
 }

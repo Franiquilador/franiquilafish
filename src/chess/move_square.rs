@@ -1,6 +1,5 @@
 use std::fmt::format;
 
-
 #[derive(PartialEq, Copy, Clone, Debug)] // for checking object equallity used in .contains of Vec
 pub struct Move {
     initial: Square,
@@ -22,7 +21,6 @@ pub struct Square {
     pub file: char,
 }
 
-
 impl Move {
     pub fn from_uci(coords: &str) -> Option<Self> {
         let starting = Square::from_str(&coords[0..2])?;
@@ -31,26 +29,29 @@ impl Move {
         Some(Move {
             initial: starting,
             end: ending,
-            promotion: match coords.chars().nth(4) { // Check if the move in uci has an extra char for promotion info
-                Some(p) => {
-                    match p {
-                        'q' => Some(Promotion::Queen),
-                        'r' => Some(Promotion::Rook),
-                        'b' => Some(Promotion::Bishop),
-                        'n' => Some(Promotion::Knight),
-                        _ => {
-                            println!("PAAANNNICCCC");
-                            panic!("no other char is valid for promotion notation");
-                        }
+            promotion: match coords.chars().nth(4) {
+                // Check if the move in uci has an extra char for promotion info
+                Some(p) => match p {
+                    'q' => Some(Promotion::Queen),
+                    'r' => Some(Promotion::Rook),
+                    'b' => Some(Promotion::Bishop),
+                    'n' => Some(Promotion::Knight),
+                    _ => {
+                        println!("PAAANNNICCCC");
+                        panic!("no other char is valid for promotion notation");
                     }
                 },
                 None => None,
-            }
+            },
         })
     }
 
     pub fn from_squares(start: Square, end: Square, promotion: Option<Promotion>) -> Self {
-        Move { initial: start, end: end, promotion: promotion } // no promotion by default when generating all moves
+        Move {
+            initial: start,
+            end: end,
+            promotion: promotion,
+        } // no promotion by default when generating all moves
     }
 
     pub fn starting_square(&self) -> Square {
@@ -58,19 +59,31 @@ impl Move {
     }
 
     pub fn final_square(&self) -> Square {
-        self.end   
+        self.end
     }
 
     pub fn to_uci(&self) -> String {
         match self.promotion {
-            None => { format!("{}{}", self.initial.to_uci(), self.final_square().to_uci()) }
+            None => {
+                format!("{}{}", self.initial.to_uci(), self.final_square().to_uci())
+            }
             Some(promotion) => {
-                let mut move_string = format!("{}{}", self.initial.to_uci(), self.final_square().to_uci());
-                match promotion { // concat the promotion, for example a queen promotion looks like "c2b1q" in UCI
-                    Promotion::Queen => { move_string = format!("{}q", move_string); }
-                    Promotion::Rook => { move_string = format!("{}r", move_string); }
-                    Promotion::Knight => { move_string = format!("{}n", move_string); }
-                    Promotion::Bishop => { move_string = format!("{}b", move_string); }
+                let mut move_string =
+                    format!("{}{}", self.initial.to_uci(), self.final_square().to_uci());
+                match promotion {
+                    // concat the promotion, for example a queen promotion looks like "c2b1q" in UCI
+                    Promotion::Queen => {
+                        move_string = format!("{}q", move_string);
+                    }
+                    Promotion::Rook => {
+                        move_string = format!("{}r", move_string);
+                    }
+                    Promotion::Knight => {
+                        move_string = format!("{}n", move_string);
+                    }
+                    Promotion::Bishop => {
+                        move_string = format!("{}b", move_string);
+                    }
                 }
 
                 move_string
@@ -85,19 +98,25 @@ impl Square {
     // returns None if the position is outside the board
     pub fn new(file: char, rank: i8) -> Option<Self> {
         if ('a'..='h').contains(&file) && (1..=8).contains(&rank) {
-            Some(Square { file: file, rank: rank })
+            Some(Square {
+                file: file,
+                rank: rank,
+            })
         } else {
             None
         }
     }
 
     fn from_str(s: &str) -> Option<Self> {
-        let mut chars= s.chars();
+        let mut chars = s.chars();
         let file = chars.next()?; // ? means if its None, the function returns early. otherwise return the value inside option
         let rank = chars.next()?.to_digit(BASE_TEN).map(|d| d as i8)?;
 
         if ('a'..='h').contains(&file) && (1..=8).contains(&rank) {
-            Some(Square { file: file, rank: rank })
+            Some(Square {
+                file: file,
+                rank: rank,
+            })
         } else {
             None
         }

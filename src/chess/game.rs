@@ -98,14 +98,14 @@ impl Game {
 
     //  pre: self.is_legal(m)
     pub fn move_piece(&mut self, m: &Move) {
-        
+
         let moving_piece = self.board.get_piece_at_square(&m.get_starting_square()); // none if the square is empty
         // dbg!(&self.board);
         self.board.update_square(moving_piece, &m.get_final_square());
 
         // dbg!(&self.board);
         self.board.update_square(None, &&m.get_starting_square());
-        
+
         // dbg!(&self.board);
         self.update_active_player();
         // todo!();
