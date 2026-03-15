@@ -23,6 +23,16 @@ pub enum Color {
     Black,
 }
 
+impl Color {
+    fn other(self) -> Self {// returns the oposite color
+        if self == Color::Black {
+            Color::White
+        } else {
+            Color::Black
+        }
+    }
+}
+
 pub enum GameState {
     Playing, // created and started (ongoing game)
     CheckMate(Color),
@@ -1091,7 +1101,9 @@ impl Engine {
                     
         // #[cfg(feature = "uci_info")]
         if is_full_depth { // check if all the nodes up to this depth were searched, or if it stoped mid search
-            if self.color == Color::Black {
+            let mate_eval = eval;
+
+            if self.color == Color::Black {// to match UCI and GUIs expectation
                 eval = -eval;
             }
 
@@ -1104,7 +1116,32 @@ impl Engine {
 
             let bm = b_m.unwrap().to_uci();
 
-            println!("info depth {depth} seldepth {seldepth} time {duration_ms} nodes {nodes} score cp {eval} nps {nps} pv {bm}");
+            if mate_eval > 999_900 || mate_eval < -999_000 {
+                let getting_mated_or_mating = if mate_eval > 0 && self.color == Color::Black { -1 } else { 1 };
+
+                let plies = if mate_eval > 0 { 1_000_000 - mate_eval } else { 1_000_000 + mate_eval };//plies for the mate found
+                
+                // let full_moves = ((*depth / 2) + 1) * getting_mated_or_mating; wrong, because search depth could be 5, but the mate could be already found at depth 2, 2 plies deep
+                let full_moves = ((plies / 2) + 1) * getting_mated_or_mating;
+
+                if mate_eval > 999_900 { // white is about to mate
+                    if self.color == Color::White {// the engine mating the oponent
+                        println!("info depth {depth} seldepth {seldepth} score mate {full_moves} nodes {nodes} time {duration_ms} nps {nps} pv {bm}");
+                    } else {//the engine is getting mated
+                        println!("info depth {depth} seldepth {seldepth} score mate {full_moves} nodes {nodes} time {duration_ms} nps {nps} pv {bm}");
+                    }
+                } else if mate_eval < -999_900 {
+                    if self.color == Color::White {// the engine is getting mated
+                        println!("info depth {depth} seldepth {seldepth} score mate {full_moves} nodes {nodes} time {duration_ms} nps {nps} pv {bm}");
+                    } else {// the engine mating the oponent
+                        println!("info depth {depth} seldepth {seldepth} score mate {full_moves} nodes {nodes} time {duration_ms} nps {nps} pv {bm}");
+                    }
+                }
+            } else {
+                println!("info depth {depth} seldepth {seldepth} score cp {eval} nodes {nodes} time {duration_ms} nps {nps} pv {bm}");
+            }
+
+            
         };
                               
         *depth += 1; // iterative deepening
@@ -1114,9 +1151,7 @@ impl Engine {
         let mut eng_move_time: i32 = 0;
 
         match times {
-            None => {// search infinitely until the stop flag
-
-            }
+            None => {} // search infinitely until the stop flag
             Some(ref t) => {
                 eng_move_time = self.calculate_time(t);
             }
@@ -1138,10 +1173,29 @@ impl Engine {
             
             let mut board_clone = self.board.clone();
             self.simulate_move(&b_m.unwrap(), &mut board_clone, &self.color);
-            let eval = if self.color == Color::Black { -self.eval(&board_clone) } else { self.eval(&board_clone) };
-            let bm = b_m.unwrap().to_uci();
-            println!("info depth 1 seldepth 1 score cp {eval} nodes 1 time 0 nps 0 pv {bm}"); // to remove warning in fastchess
+            let mut eval = if self.color == Color::Black { -self.eval(&board_clone) } else { self.eval(&board_clone) };
 
+            let bm = b_m.unwrap().to_uci();
+
+            // to remove warning in fastchess, we always gotta print some info before saying "bestmove ..."
+            // IMPORTANT: the UCI info printed bellow about eval and checkmates is not accurate, and that is completly intentional
+            // because the engine does not waste time checking if it will be checkmate, since it can only play 1 move anyways
+            // for accurate checkmate and eval info, it would have to a pointless iterative deepening search since it is forced to always play the same move
+            if eval > 999_900 { // white is about to mate in the next move, which is the only available one
+                if self.color == Color::White {// the engine is about to mate the oponent
+                    println!("info depth 1 seldepth 1 score mate 1 nodes 1 time 0 nps 0 pv {bm}");
+                } else {//the engine is getting mated
+                    println!("info depth 1 seldepth 1 score mate -1 nodes 1 time 0 nps 0 pv {bm}");
+                }
+            } else if eval < -999_900 {
+                if self.color == Color::White {// the engine is getting mated
+                    println!("info depth 1 seldepth 1 score mate -1 nodes 1 time 0 nps 0 pv {bm}");
+                } else {// the engine is about to mate the oponent
+                    println!("info depth 1 seldepth 1 score mate 1 nodes 1 time 0 nps 0 pv {bm}");
+                }
+            } else {// this is the branch that should always execute, since the engine does not check for checkmates if it only has 1 move available to play
+                println!("info depth 1 seldepth 1 score cp {eval} nodes 1 time 0 nps 0 pv {bm}"); 
+            }
         } else if legal_moves.len() == 0 {
             println!("panicccccccc, no legal moves in the search");
             panic!("no legal moves");
@@ -1177,50 +1231,6 @@ impl Engine {
         }
 
         best_move = b_m.unwrap().to_uci();
-
-        /*
-        return best_move2;
-
-        //----------------------------------------------------------------------------------------------
-
-        let mut board_clone = self.board.clone();
-        let legal_moves = self.get_legal_moves(&board_clone, self.color);
-        
-        let mut best_eval = match self.color {
-            Color::Black => i32::MAX,
-            Color::White => i32::MIN,
-        };
-        let mut best_move = String::new();
-
-        if !legal_moves.is_empty() {
-            best_move = legal_moves[0].to_uci();
-        } else {
-            println!("PANICCCCCCCCCCCCCCCCCCC, draw? no legal moves that the engine knows");
-            stdout().flush().unwrap();
-            panic!("no legal moves, maybe draw?");
-        }
-
-        let mut b_m = legal_moves.get(0).expect("no legal moves");
-
-        for m in legal_moves.iter() {
-            let mut board_clone = self.board.clone();
-            self.simulate_move(&m, &mut board_clone, &self.current_player);
-
-            let e = self.eval(&board_clone);
-
-            if self.color == Color::White {
-                if e > best_eval {
-                    best_eval = e;
-                    b_m = m;
-                    best_move = m.to_uci();
-                }
-            } else {
-                if e < best_eval {
-                    best_eval = e;
-                    best_move = m.to_uci();
-                }
-            }
-        }*/
 
         let is_capture_or_pawn_move = self.is_capture_or_pawn_move(b_m.unwrap());
 

@@ -1,2 +1,6 @@
 [build]
 rustflags = ["-Awarnings"]
+
+[profile.profiling]
+inherits = "release"
+debug = true

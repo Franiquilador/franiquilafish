@@ -4,3 +4,6 @@ run.ps1
 config.json
 Unbalanced-Human-Openings
 games.pgn
+profile.json.gz
+commands.txt
+profile.kernel.etl

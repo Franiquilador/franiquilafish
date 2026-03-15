@@ -55,8 +55,6 @@ const BLACK_KING_TABLE: [[i32; 8]; 8] = [
     [-5, -10, 0, 10, 10, 0, -10, -5],
 ];
 
-// const BLACK_KNIGHT: [[i32; 8]; 8] = -KNIGHT_TABLE;
-
 impl ChessPiece {
     pub fn value(&self, row: usize, col: usize) -> i32 {
         let mut value: i32 = 0;
