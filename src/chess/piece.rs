@@ -1,6 +1,6 @@
 use std::usize;
 
-use crate::chess::move_square::{Move, Promotion, Square};
+use crate::chess::move_square::{Move, Square};
 // use crate::chess::game::Color;
 use crate::chess::engine::Color;
 
@@ -342,9 +342,6 @@ impl ChessPiece {
                     Some(s) => moves.push(Move::from_squares(*pos, s, None)),
                     None => {}
                 };
-            }
-            _ => {
-                // println!("faltam calcular moves de outras peças")
             }
         };
 

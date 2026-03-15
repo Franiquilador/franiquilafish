@@ -1,5 +1,5 @@
-[build]
-rustflags = ["-Awarnings"]
+# [build]
+# rustflags = ["-Awarnings"]
 
 [profile.profiling]
 inherits = "release"

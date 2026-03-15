@@ -1,5 +1,3 @@
-use std::fmt::format;
-
 #[derive(PartialEq, Copy, Clone, Debug)] // for checking object equallity used in .contains of Vec
 pub struct Move {
     initial: Square,

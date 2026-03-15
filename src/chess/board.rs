@@ -1,24 +1,9 @@
-use std::cmp::max;
-use std::io::{Write, stdout};
-use std::{convert, vec};
+use std::vec;
 
 // use crate::chess::game::Color;
 use crate::chess::engine::{Color, ZobristKeys};
 use crate::chess::move_square::{Move, Promotion, Square};
-use crate::chess::piece::{self, ChessPiece as CP, ChessPiece, Piece};
-
-#[derive(Debug, Clone)]
-enum CastlingSide {
-    All,
-    King,
-    Queen,
-}
-
-#[derive(Debug, Clone)]
-enum Castling {
-    White(Option<CastlingSide>),
-    Black(Option<CastlingSide>),
-}
+use crate::chess::piece::{ChessPiece, Piece};
 
 //file = collumn
 //rank = row
@@ -421,7 +406,7 @@ impl Board {
             for c in rank.chars() {
                 match c.to_digit(10) {
                     None => {
-                        let mut piece: Option<ChessPiece> = None;
+                        let piece: Option<ChessPiece>;
                         match c {
                             'r' => {
                                 piece = Some(ChessPiece {
@@ -495,7 +480,7 @@ impl Board {
                                     color: Color::White,
                                 })
                             }
-                            e => {
+                            _e => {
                                 // dbg!(e);
                                 panic!("invalid char in fen board");
                             }
@@ -826,7 +811,7 @@ impl Board {
             }
 
             Piece::Rook => {
-                let mut steps: i8 = 0;
+                let steps: i8;
                 let mut rank_coef = 0;
                 let mut file_coef = 0;
 
@@ -912,7 +897,7 @@ impl Board {
                         }
                     }
                 } else {
-                    let mut steps: i8 = 0;
+                    let steps: i8;
                     let mut rank_coef = 0;
                     let mut file_coef = 0;
 
@@ -1261,72 +1246,6 @@ impl Board {
     pub fn update_square(&mut self, piece: Option<ChessPiece>, square: &Square) {
         let col = file_to_num(square.file);
         let row = square.rank as usize - 1;
-
-        /*
-                if self.pieces[row][col as usize] != None { // it is a capture, we gotta xor out the captured piece first
-                    match self.pieces[row][col as usize] {
-                        None => {
-                            println!("PANIC, should be None");
-                            panic!("should be None");
-                        }
-                        Some(p) => {// match the piece that was captured
-                            match (p.piece, p.color) {
-
-
-
-                        (Piece::Pawn, Color::Black) => {
-                                        // The index is determined by the piece order in all_piece_types in the generate fn in the Engine
-                                        self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][0].key;
-                                    }
-
-                                    (Piece::Knight, Color::Black) => {
-                                        self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][1].key;
-                                    }
-
-                                    (Piece::Bishop, Color::Black) => {
-                                        self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][2].key;
-                                    }
-
-                                    (Piece::Queen, Color::Black) => {
-                                        self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][3].key;
-                                    }
-
-                                    (Piece::King, Color::Black) => {
-                                        self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][4].key;
-                                    }
-
-                                    (Piece::Rook, Color::Black) => {
-                                        self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][5].key;
-                                    }
-
-                                    (Piece::Pawn, Color::White) => {
-                                        self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][6].key;
-                                    }
-
-                                    (Piece::Knight, Color::White) => {
-                                        self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][7].key;
-                                    }
-
-                                    (Piece::Bishop, Color::White) => {
-                                        self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][8].key;
-                                    }
-
-                                    (Piece::Queen, Color::White) => {
-                                        self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][9].key;
-                                    }
-
-                                    (Piece::King, Color::White) => {
-                                        self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][10].key;
-                                    }
-
-                                    (Piece::Rook, Color::White) => {
-                                        self.zobrist_hash ^= self.zobrist_keys.piece_table[(square.rank as usize) - 1][file_to_num(square.file) as usize][11].key;
-                                    }
-                            }
-                            }
-                    }
-                }
-        */
 
         match piece {
             None => {

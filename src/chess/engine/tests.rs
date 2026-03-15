@@ -53,7 +53,7 @@ mod startpos {
     #[ignore = "to slow to test yet, and i32 overflow"]
     fn depth_6() {
         // if this passes, all previous depths have passed
-        let engine = Engine::new();
+        let _engine = Engine::new();
         // assert_eq!(8_031_647_685, engine.unit_perft(6));
     }
 }
@@ -238,8 +238,6 @@ mod pos_3 {
 }
 
 mod pos_4 {
-    use crate::chess::engine;
-
     use super::*;
 
     #[test]

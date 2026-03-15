@@ -1,112 +1,25 @@
 use franiquilafish::chess::engine::PlayerTimes;
 use franiquilafish::chess::{
-    engine::{Color, Engine, GameState},
-    move_square::Move,
-    piece::{ChessPiece as CP, ChessPiece, Piece as P},
-    start_match,
+    engine::{Color, Engine},
+    piece::{ChessPiece, Piece as P},
 };
 
-use std::{io::stdout, iter::TakeWhile};
+use std::io::stdout;
 use std::{
-    io::{self, Write, stdin},
+    io::{Write, stdin},
     sync::mpsc::{Receiver, Sender},
 };
 
 use std::sync::mpsc;
 use std::sync::{
-    Arc, Mutex,
+    Arc,
     atomic::{AtomicBool, Ordering},
 };
 use std::thread;
 
-enum Command {
-    Help,
-    Uci,
-    Quit,
-    NewGame,
-    Unknown(String),
-}
-
-const HELP: &str = "h";
-const NEW_GAME: &str = "n";
-const QUIT: &str = "q";
-
-impl Command {
-    // reads input as &str and returns an enum for pattern matching
-    fn from_input(input: &str) -> Self {
-        match input.trim().to_lowercase().as_str() {
-            HELP => Self::Help,
-            QUIT => Self::Quit,
-            NEW_GAME => Self::NewGame,
-            "uci" => Self::Uci,
-            other => Self::Unknown(other.to_string()),
-        }
-    }
-
-    // fn get_move_from_uci(input: &str) -> Option<Move> {
-    // Move::from_uci(input)
-    // }
-}
-
-enum UciCommand {
-    // all possible comands from the GUI using the UCI protocol
-    IsReady,
-    UciNewGame,
-    Quit,
-}
-
-impl UciCommand {
-    fn from(cmd: &str) -> Option<Self> {
-        match cmd {
-            "isready" => Some(Self::IsReady),
-            "quit" => Some(Self::Quit),
-            _ => {
-                // println!("Uci command from the GUI not supported");
-                None
-            }
-        }
-    }
-}
-
 // time, serde
 fn main() {
     // let mut engine = Engine::new();
-    /*
-    println!("This is command line chess!");
-    println!("Type '{HELP}' for commands");
-
-    while engine.is_running() {
-        let mut input = String::new();
-        if !engine.has_started() {
-            // print!("> ");
-        }
-
-        /*
-         * so that "> " is printed immediatly instead of waiting for the output buffer to be full,
-         * to then system call the os to write to stdout
-         */
-        std::io::stdout()
-            .flush()
-            .expect("failed to flush the output buffer");
-        io::stdin()
-            .read_line(&mut input)
-            .expect("Failed to read line");
-
-        match engine.game_state() {
-            GameState::Playing => {
-                let m = Command::get_move_from_uci(&input);
-                match m {
-                    Some(valid) => process_move(&mut engine, valid),
-                    None => println!("invalid move"),
-                }
-            },
-            _ => {
-                let command = Command::from_input(&input);
-                process_command(command, &mut engine);
-            },
-        }
-    }
-    */
 
     let mut input = String::new();
 
@@ -134,30 +47,6 @@ fn main() {
     }*/
 }
 
-fn process_move(engine: &mut Engine, m: Move) {
-    if engine.is_legal(&m) {
-        // engine.move_piece(&m);
-    } else {
-        println!("ilegal move");
-        println!();
-    }
-    // dbg!(m);
-    // print_board(engine.get_board().get_pieces(), engine.get_active_player());
-    // todo!("process move");
-}
-
-fn process_command(command: Command, engine: &mut Engine) {
-    match command {
-        Command::Help => process_help(),
-        Command::Uci => uci(),
-        Command::Quit => engine.close(),
-        Command::NewGame => process_new(engine),
-        Command::Unknown(cmd) => {
-            // println!("Unknow command '{cmd}'. Type '{HELP}' for commands");
-        }
-    }
-}
-
 fn uci() {
     id_outputs();
 
@@ -165,7 +54,7 @@ fn uci() {
     stdout().flush().unwrap();
 
     // Shared stop flag (atomic = thread-safe, no locks needed)
-    let mut stop = Arc::new(AtomicBool::new(false));
+    let stop = Arc::new(AtomicBool::new(false));
 
     let stop_clone = Arc::clone(&stop);
 
@@ -173,7 +62,7 @@ fn uci() {
 
     //search thread, the main threads blocks waiting for GUI commands on the stdin
     // the search thrd ocasionally checks for msgs from main to see if the engine told it to stop the search
-    let search_thread = thread::spawn(move || {
+    let _search_thread = thread::spawn(move || {
         search_thread(stop_clone, consumer);
     });
 
@@ -208,7 +97,7 @@ fn main_uci_thread(producer: Sender<String>, stop: Arc<AtomicBool>) {
             } //atomicbool operation guarantees the flag is updated by only one thread at a time, since the flag is shared between threads
             "quit" => break,
             line => {
-                producer.send(line.to_string());
+                let _ = producer.send(line.to_string());
             }
         }
     }
@@ -219,25 +108,10 @@ fn search_thread(stop_clone: Arc<AtomicBool>, consumer: Receiver<String>) {
 
     let mut moves: Vec<String> = vec![];
 
-    /*
-    std::panic::set_hook(Box::new(|info| {
-    use std::io::Write;
-    let mut file = std::fs::OpenOptions::new()
-        .append(true).create(true)
-        .open("panic_log.txt").unwrap();
-        writeln!(file, "{}", info).ok();
-    }));*/
-
     loop {
         let cmd: String = consumer.recv().unwrap(); // blocks waiting for input from the GUI, received in the main thread
 
-        let mut times = PlayerTimes {
-            wtime: 0,
-            btime: 0,
-            winc: 0,
-            binc: 0,
-            movetime: 0,
-        };
+        let times: PlayerTimes;
 
         match cmd.as_str() {
             "isready" => {
@@ -344,7 +218,7 @@ fn search_thread(stop_clone: Arc<AtomicBool>, consumer: Receiver<String>) {
 
                         engine.set_color(*engine.get_active_player());
 
-                        let best_move = engine.search(moves.clone(), time, Arc::clone(&stop_clone));
+                        let best_move = engine.search(time, Arc::clone(&stop_clone));
 
                         print!("bestmove {best_move}\n");
                         stdout().flush().unwrap();
@@ -363,19 +237,7 @@ fn id_outputs() {
     stdout().flush().unwrap();
 }
 
-fn process_help() {
-    println!("{HELP} - prints usefull information about all available commands");
-    println!("{NEW_GAME} - creates a new chess game");
-    println!("uci - enters the uci protocol with a GUI");
-    println!("{QUIT} - terminate the chess game");
-}
-
-fn process_new(game: &mut Engine) {
-    game.start();
-    // print_board(game.get_board().get_pieces(), game.get_active_player());
-}
-
-fn print_board(mut pieces: [[Option<ChessPiece>; 8]; 8], active_player: &Color) {
+fn _print_board(pieces: [[Option<ChessPiece>; 8]; 8], active_player: &Color) {
     println!("  +---+---+---+---+---+---+---+---+");
 
     let mut cloned_pieces = pieces.clone();

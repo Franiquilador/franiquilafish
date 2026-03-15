@@ -1,10 +1,6 @@
-use core::panic::PanicInfo;
-use core::time;
-use std::io::{Write, stdout};
-use std::thread::sleep;
+use std::i32;
 use std::time::Instant;
-use std::{clone, i32};
-use std::{fmt::DebugStruct, mem::transmute, vec};
+use std::vec;
 
 use crate::chess::board;
 use crate::chess::move_square::Promotion;
@@ -12,7 +8,7 @@ use crate::chess::move_square::{Move, Square};
 use crate::chess::piece::{ChessPiece, Piece};
 use board::Board;
 use std::sync::{
-    Arc, Mutex,
+    Arc,
     atomic::{AtomicBool, Ordering},
 };
 
@@ -27,7 +23,7 @@ pub enum Color {
 }
 
 impl Color {
-    fn other(self) -> Self {
+    fn _other(self) -> Self {
         // returns the oposite color
         if self == Color::Black {
             Color::White
@@ -55,7 +51,7 @@ pub struct PlayerTimes {
 
 #[derive(Default, Debug, Clone)]
 pub struct ZobristPieceKey {
-    piece: ChessPiece,
+    _piece: ChessPiece,
     pub key: u64,
 }
 
@@ -176,7 +172,7 @@ impl Engine {
             for col in 0..8 {
                 for (k, piece) in all_piece_types.iter().enumerate() {
                     table[row][col][k] = ZobristPieceKey {
-                        piece: *piece,
+                        _piece: *piece,
                         key: rng.random(), // always the same sequence of random keys
                     };
                 }
@@ -281,7 +277,7 @@ impl Engine {
         match &self.game_state {
             GameState::Created => false,
             GameState::Playing => true,
-            GameState::CheckMate(c) => true,
+            GameState::CheckMate(_) => true,
             GameState::StaleMate => true,
         }
     }
@@ -534,7 +530,6 @@ impl Engine {
             is_moving_piece_pawn && starting_square.rank == 2 && rank_dif == 2;
         let is_double_push_black =
             is_moving_piece_pawn && starting_square.rank == 7 && rank_dif == 2;
-        let is_en_passant = is_double_push_white || is_double_push_black;
 
         let is_white_capture = starting_square.rank == 5; // white capture black en passant
 
@@ -543,7 +538,7 @@ impl Engine {
         match final_piece_before_move {
             // to check if it is a capture, to both pawns (ghost target and the actual pawn)
             None => {}
-            Some(p) => {
+            Some(_) => {
                 let e_p = board.get_en_passant();
 
                 match e_p {
@@ -881,6 +876,8 @@ impl Engine {
     ///
     /// # Returns
     /// The number of possible positions at the given depth.
+    /// these doc comments are show with rust analyzer, when hovering the mouse over it
+    #[cfg(test)]
     fn unit_perft(&self, depth: i32) -> i32 {
         let mut board_clone = self.board.clone();
 
@@ -945,7 +942,7 @@ impl Engine {
 
     fn is_king_in_check(&self, board: &Board, color: &Color) -> bool {
         // check if the king with the given color is in check
-        let mut kings_square: Square;
+        let kings_square: Square;
         let is_in_check = false;
 
         for (i, row) in board.get_pieces().iter().enumerate() {
@@ -1336,10 +1333,10 @@ impl Engine {
         seldepth: &mut i32,
     ) {
         let mut eval: i32 = -1;
-        let mut is_full_depth: bool;
+        let is_full_depth: bool;
 
         let search_start = std::time::Instant::now();
-        let mut duration_ms;
+        let duration_ms;
         let mut nodes: u64 = 0;
 
         match self.get_best_move(
@@ -1437,12 +1434,7 @@ impl Engine {
         *depth += 1; // iterative deepening
     }
     // returns the best move and updates the move counts on the boards
-    pub fn search(
-        &mut self,
-        moves: Vec<String>,
-        times: Option<PlayerTimes>,
-        stop_flag: Arc<AtomicBool>,
-    ) -> String {
+    pub fn search(&mut self, times: Option<PlayerTimes>, stop_flag: Arc<AtomicBool>) -> String {
         let mut eng_move_time: i32 = 0;
 
         match times {
@@ -1458,8 +1450,8 @@ impl Engine {
 
         let mut seldepth = 1;
 
-        let mut best_move = String::new();
-        let mut b_m: Option<Move> = None;
+        let best_move: String;
+        let mut b_m: Option<Move>;
 
         let legal_moves = self.get_legal_moves(&self.board, self.color);
 
@@ -1469,7 +1461,7 @@ impl Engine {
 
             let mut board_clone = self.board.clone();
             self.simulate_move(&b_m.unwrap(), &mut board_clone, &self.color);
-            let mut eval = if self.color == Color::Black {
+            let eval = if self.color == Color::Black {
                 -self.eval(&board_clone)
             } else {
                 self.eval(&board_clone)
@@ -1835,7 +1827,6 @@ impl Engine {
         let mut eval = 0;
         for (i, row) in board.get_pieces().iter().enumerate() {
             for (j, p) in row.iter().enumerate() {
-                let is_white = true;
                 match p {
                     None => continue,
                     Some(piece) => {
