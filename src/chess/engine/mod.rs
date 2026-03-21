@@ -1,4 +1,3 @@
-use std::i32;
 use std::time::Instant;
 use std::vec;
 
@@ -93,6 +92,7 @@ pub struct Engine {
     board_history: Vec<u64>, // every board position played up to this point in this game
 }
 
+#[allow(clippy::new_without_default)]
 impl Engine {
     pub fn new() -> Self {
         let keys = Self::generate_zobrist_keys();
@@ -222,8 +222,8 @@ impl Engine {
 
         ZobristKeys {
             piece_table: table,
-            blacks_turn: blacks_turn,
-            castling_keys: castling_keys,
+            blacks_turn,
+            castling_keys,
             en_passant_keys: ep_keys,
         }
     }
@@ -289,11 +289,7 @@ impl Engine {
         // println!("num of legal moves: {}", self.legal_moves.len());
         // dbg!(m);
 
-        if self.legal_moves.contains(m) {
-            true
-        } else {
-            false
-        }
+        self.legal_moves.contains(m)
     }
 
     fn promote_piece(
@@ -622,46 +618,47 @@ impl Engine {
         let mut attacked = vec![];
         for (i, row) in board.get_pieces().iter().enumerate() {
             for (j, piece) in row.iter().enumerate() {
-                if let Some(p) = piece {
-                    if p.color == *color && p.piece == Piece::Pawn {
-                        let file = board::num_to_file(j as u8); // j is the file index (0..7) -> (a..=h)
-                        let rank = (i as i8) + 1; // i is the rank index (0..7 → 1..8)
+                if let Some(p) = piece
+                    && p.color == *color
+                    && p.piece == Piece::Pawn
+                {
+                    let file = board::num_to_file(j as u8); // j is the file index (0..7) -> (a..=h)
+                    let rank = (i as i8) + 1; // i is the rank index (0..7 → 1..8)
 
-                        let pos = Square::new(file, rank).unwrap();
+                    let pos = Square::new(file, rank).unwrap();
 
-                        match color {
-                            Color::Black => {
-                                match pos.offset(1, -1) {
-                                    // returns None if the pos is outside the board
-                                    None => {}
-                                    Some(s) => {
-                                        attacked.push(s);
-                                    }
-                                };
-                                match pos.offset(-1, -1) {
-                                    // returns None if the pos is outside the board
-                                    None => {}
-                                    Some(s) => {
-                                        attacked.push(s);
-                                    }
-                                };
-                            }
-                            Color::White => {
-                                match pos.offset(1, 1) {
-                                    // returns None if the pos is outside the board
-                                    None => {}
-                                    Some(s) => {
-                                        attacked.push(s);
-                                    }
-                                };
-                                match pos.offset(-1, 1) {
-                                    // returns None if the pos is outside the board
-                                    None => {}
-                                    Some(s) => {
-                                        attacked.push(s);
-                                    }
-                                };
-                            }
+                    match color {
+                        Color::Black => {
+                            match pos.offset(1, -1) {
+                                // returns None if the pos is outside the board
+                                None => {}
+                                Some(s) => {
+                                    attacked.push(s);
+                                }
+                            };
+                            match pos.offset(-1, -1) {
+                                // returns None if the pos is outside the board
+                                None => {}
+                                Some(s) => {
+                                    attacked.push(s);
+                                }
+                            };
+                        }
+                        Color::White => {
+                            match pos.offset(1, 1) {
+                                // returns None if the pos is outside the board
+                                None => {}
+                                Some(s) => {
+                                    attacked.push(s);
+                                }
+                            };
+                            match pos.offset(-1, 1) {
+                                // returns None if the pos is outside the board
+                                None => {}
+                                Some(s) => {
+                                    attacked.push(s);
+                                }
+                            };
                         }
                     }
                 }
@@ -694,18 +691,8 @@ impl Engine {
                     let engine_final_square = m.final_square();
                     match color {
                         Color::Black => {
-                            let is_king_side =
-                                if engine_final_square == Square::new('g', 8).unwrap() {
-                                    true
-                                } else {
-                                    false
-                                };
-                            let is_queen_side =
-                                if engine_final_square == Square::new('c', 8).unwrap() {
-                                    true
-                                } else {
-                                    false
-                                };
+                            let is_king_side = engine_final_square == Square::new('g', 8).unwrap();
+                            let is_queen_side = engine_final_square == Square::new('c', 8).unwrap();
 
                             let pawn_attacks = Self::pawn_attacks(&board_clone, &other_player); // because board_clone.pseudo_legal_moves(&other_player); does not generate pawn checks, since simulate move already castled the king
                             if pawn_attacks.contains(&Square::new('e', 8).unwrap()) {
@@ -726,18 +713,8 @@ impl Engine {
                             }
                         }
                         Color::White => {
-                            let is_king_side =
-                                if engine_final_square == Square::new('g', 1).unwrap() {
-                                    true
-                                } else {
-                                    false
-                                };
-                            let is_queen_side =
-                                if engine_final_square == Square::new('c', 1).unwrap() {
-                                    true
-                                } else {
-                                    false
-                                };
+                            let is_king_side = engine_final_square == Square::new('g', 1).unwrap();
+                            let is_queen_side = engine_final_square == Square::new('c', 1).unwrap();
 
                             let pawn_attacks = Self::pawn_attacks(&board_clone, &other_player); // because board_clone.pseudo_legal_moves(&other_player); does not generate pawn checks, since simulate move already castled the king
                             if pawn_attacks.contains(&Square::new('e', 1).unwrap()) {
@@ -838,7 +815,7 @@ impl Engine {
         }
         // this bellow makes sense because depth 1 means only 1 move is allowed, and that move is b1a3, which leads to a leaf node and implies that the only position allowed is the one after b1a3 is played
         // Move { initial: Square { rank: 1, file: 'b' }, end: Square { rank: 3, file: 'a' } }: 1 possible moves after it when depth = 1
-        return nodes;
+        nodes
     }
 
     pub fn perft(&self, max_depth: i32) {
@@ -881,9 +858,7 @@ impl Engine {
     fn unit_perft(&self, depth: i32) -> i32 {
         let mut board_clone = self.board.clone();
 
-        let possible_positions = self.perft_aux(depth, &mut board_clone, self.current_player);
-
-        possible_positions
+        self.perft_aux(depth, &mut board_clone, self.current_player) //possible positions
     }
 
     fn perft_aux(&self, depth: i32, board: &mut Board, color: Color) -> i32 {
@@ -910,7 +885,7 @@ impl Engine {
             );
         }
 
-        return nodes;
+        nodes
     }
 
     // planed time to spend in the next move in ms
@@ -918,21 +893,19 @@ impl Engine {
         match self.color {
             // always plan thinking there are still 40 moves to go
             Color::Black => {
-                let remaining: i32;
-                if times.movetime > 0 {
+                let remaining: i32 = if times.movetime > 0 {
                     return times.movetime;
                 } else {
-                    remaining = times.btime;
+                    times.btime
                 };
                 let time = (remaining / 40) + times.binc / 2; // add the increment
                 time.max(100)
             }
             Color::White => {
-                let remaining: i32;
-                if times.movetime > 0 {
+                let remaining: i32 = if times.movetime > 0 {
                     return times.movetime;
                 } else {
-                    remaining = times.wtime;
+                    times.wtime
                 };
                 let time = (remaining / 40) + times.winc / 2;
                 time.max(100)
@@ -976,7 +949,7 @@ impl Engine {
             }
         }
 
-        return is_in_check; // should never reach this return, because the king should be found somewhere in the board
+        is_in_check // should never reach this return, because the king should be found somewhere in the board
     }
 
     // in a max node: we define alpha, and test beta
@@ -1450,7 +1423,6 @@ impl Engine {
 
         let mut seldepth = 1;
 
-        let best_move: String;
         let mut b_m: Option<Move>;
 
         let legal_moves = self.get_legal_moves(&self.board, self.color);
@@ -1494,7 +1466,7 @@ impl Engine {
                 // this is the branch that should always execute, since the engine does not check for checkmates if it only has 1 move available to play
                 println!("info depth 1 seldepth 1 score cp {eval} nodes 1 time 0 nps 0 pv {bm}");
             }
-        } else if legal_moves.len() == 0 {
+        } else if legal_moves.is_empty() {
             println!("panicccccccc, no legal moves in the search");
             panic!("no legal moves");
         } else {
@@ -1548,7 +1520,7 @@ impl Engine {
             };
         }
 
-        best_move = b_m.unwrap().to_uci();
+        let best_move: String = b_m.unwrap().to_uci();
 
         let is_capture_or_pawn_move = self.is_capture_or_pawn_move(b_m.unwrap());
 
@@ -1564,7 +1536,7 @@ impl Engine {
     }
 
     // orders best moves to be looked at first to improve alpha beta pruning
-    fn order_moves(&self, legal_moves: &mut Vec<Move>, prev_bm: Move) {
+    fn order_moves(&self, legal_moves: &mut [Move], prev_bm: Move) {
         if let Some(pos) = legal_moves.iter().position(|x| *x == prev_bm) {
             legal_moves.swap(0, pos);
         } else {
@@ -1774,13 +1746,10 @@ impl Engine {
     fn is_capture(&self, board: &Board, m: &Move) -> bool {
         let final_square_piece = board.get_piece_at_square(&m.final_square());
 
-        match final_square_piece {
-            None => false,
-            Some(_) => true,
-        }
+        final_square_piece.is_some()
     }
 
-    fn is_three_fold_draw(hash: u64, board_history: &Vec<u64>) -> bool {
+    fn is_three_fold_draw(hash: u64, board_history: &[u64]) -> bool {
         let mut repetition_count = 0;
         let is_draw = false;
 

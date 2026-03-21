@@ -189,6 +189,7 @@ impl Board {
         let mut initial_hash: u64 = 0; // A ^ 0 = A - propriedade do elemento neutro
 
         //encode all pieces into the hash
+        #[allow(clippy::assign_op_pattern)]
         for (i, row) in pieces.iter().enumerate() {
             for (j, piece) in row.iter().enumerate() {
                 match piece {
@@ -320,7 +321,7 @@ impl Board {
 
         let mut board = Board {
             fen: fen_parts.join(" ").trim().to_string(), // joins the fen into a single string with whitespace in between
-            current_player: current_player,
+            current_player,
             castling_rights: Self::castling(fen_parts.get(2).expect("no castling info")),
             en_passant: None,
             half_move_clock: fen_parts
@@ -355,9 +356,7 @@ impl Board {
     }
 
     fn half_moves_from_fen(full_moves: i32, current_player: Color) -> i32 {
-        let half_moves =
-            ((full_moves - 1) * 2) + (if current_player == Color::Black { 1 } else { 0 });
-        half_moves
+        ((full_moves - 1) * 2) + (if current_player == Color::Black { 1 } else { 0 })
     }
 
     pub fn update_move_counts(
@@ -388,7 +387,7 @@ impl Board {
 
     fn pieces_from_fen(fen_parts: Vec<&str>) -> [[Option<ChessPiece>; 8]; 8] {
         let ranks: Vec<&str> = fen_parts
-            .get(0)
+            .first()
             .expect("should have the board position in the fen")
             .split('/')
             .rev()
@@ -406,76 +405,75 @@ impl Board {
             for c in rank.chars() {
                 match c.to_digit(10) {
                     None => {
-                        let piece: Option<ChessPiece>;
-                        match c {
+                        let piece: Option<ChessPiece> = match c {
                             'r' => {
-                                piece = Some(ChessPiece {
+                                Some(ChessPiece {
                                     piece: Piece::Rook,
                                     color: Color::Black,
                                 })
                             }
                             'n' => {
-                                piece = Some(ChessPiece {
+                                Some(ChessPiece {
                                     piece: Piece::Knight,
                                     color: Color::Black,
                                 })
                             }
                             'b' => {
-                                piece = Some(ChessPiece {
+                                Some(ChessPiece {
                                     piece: Piece::Bishop,
                                     color: Color::Black,
                                 })
                             }
                             'q' => {
-                                piece = Some(ChessPiece {
+                                Some(ChessPiece {
                                     piece: Piece::Queen,
                                     color: Color::Black,
                                 })
                             }
                             'k' => {
-                                piece = Some(ChessPiece {
+                                Some(ChessPiece {
                                     piece: Piece::King,
                                     color: Color::Black,
                                 })
                             }
                             'p' => {
-                                piece = Some(ChessPiece {
+                                Some(ChessPiece {
                                     piece: Piece::Pawn,
                                     color: Color::Black,
                                 })
                             }
                             'P' => {
-                                piece = Some(ChessPiece {
+                                Some(ChessPiece {
                                     piece: Piece::Pawn,
                                     color: Color::White,
                                 })
                             }
                             'R' => {
-                                piece = Some(ChessPiece {
+                                Some(ChessPiece {
                                     piece: Piece::Rook,
                                     color: Color::White,
                                 })
                             }
                             'N' => {
-                                piece = Some(ChessPiece {
+                                Some(ChessPiece {
                                     piece: Piece::Knight,
                                     color: Color::White,
                                 })
                             }
                             'B' => {
-                                piece = Some(ChessPiece {
+                                Some(ChessPiece {
                                     piece: Piece::Bishop,
                                     color: Color::White,
                                 })
                             }
                             'Q' => {
-                                piece = Some(ChessPiece {
+                                Some(ChessPiece {
                                     piece: Piece::Queen,
                                     color: Color::White,
                                 })
                             }
                             'K' => {
-                                piece = Some(ChessPiece {
+                                Some(ChessPiece {
                                     piece: Piece::King,
                                     color: Color::White,
                                 })
@@ -485,6 +483,7 @@ impl Board {
                                 panic!("invalid char in fen board");
                             }
                         };
+
                         pieces_v.push(piece);
                     }
                     Some(n) => {
@@ -648,7 +647,7 @@ impl Board {
                         // or
                         self.update_square(
                             Some(ChessPiece {
-                                color: color,
+                                color,
                                 piece: Piece::Pawn,
                             }),
                             &s,
@@ -675,9 +674,9 @@ impl Board {
     pub fn set_current_player_in_fen(&mut self, active_player: &Color) {
         let mut substrings: Vec<&str> = self.fen.split(" ").collect();
         if substrings.len() > 1 {
-            match active_player {
-                &Color::White => substrings[1] = "b",
-                &Color::Black => substrings[1] = "w",
+            match *active_player {
+                Color::White => substrings[1] = "b",
+                Color::Black => substrings[1] = "w",
             }
         }
     }
@@ -748,20 +747,11 @@ impl Board {
         let starting_square = &m.starting_square();
         let final_square = &m.final_square();
 
-        let ep = match self.en_passant {
-            None => false,
-            Some(_) => true,
-        };
+        let ep = self.en_passant.is_some();
         let is_ep_ghost = match self.en_passant {
             // check if the final square matches the en-passant target square
             None => false,
-            Some(s) => {
-                if s == *final_square {
-                    true
-                } else {
-                    false
-                }
-            }
+            Some(s) => { s == *final_square  }
         };
 
         let moving_piece = self
@@ -773,7 +763,7 @@ impl Board {
         let rank_dif = final_square.rank - starting_square.rank;
         let file_dif = (final_square.file as i8) - (starting_square.file as i8);
 
-        let is_vertical = if rank_dif == 0 { false } else { true };
+        let is_vertical = rank_dif != 0;
 
         match moving_piece.piece {
             // check for pieces in between, pieces cant hop over another piece unless its the knight
@@ -796,7 +786,7 @@ impl Board {
                     match Square::new(new_file, new_rank) {
                         None => return false, //only if the square is outside the board, never triggers in practice
                         Some(s) => {
-                            if self.get_piece_at_square(&s) != None
+                            if self.get_piece_at_square(&s).is_some()
                                 && (if ep {
                                     self.en_passant.unwrap() != s
                                 } else {
@@ -811,33 +801,33 @@ impl Board {
             }
 
             Piece::Rook => {
-                let steps: i8;
                 let mut rank_coef = 0;
                 let mut file_coef = 0;
 
                 if is_vertical {
                     rank_coef = if rank_dif > 0 { 1 } else { -1 };
-                    steps = rank_dif.abs().try_into().unwrap()
                 } else {
                     file_coef = if file_dif > 0 { 1 } else { -1 };
-                    steps = file_dif.abs()
+                    
                 };
+
+                let steps = file_dif.abs();
 
                 for i in 1..steps {
                     // checks the positions between the rook and the final square
-                    let mut new_rank = starting_square.rank as i8;
+                    let mut new_rank = starting_square.rank;
                     let mut new_file = starting_square.file;
 
                     if is_vertical {
-                        new_rank = (starting_square.rank as i8) + (i * (rank_coef as i8));
+                        new_rank = (starting_square.rank) + (i * (rank_coef as i8));
                     } else {
-                        new_file = ((starting_square.file as i8) + ((file_coef as i8) * (i as i8)))
+                        new_file = ((starting_square.file as i8) + ((file_coef as i8) * i))
                             as u8 as char;
                     };
 
-                    match Square::new(new_file, new_rank.into()) {
+                    match Square::new(new_file, new_rank) {
                         Some(s) => {
-                            if self.get_piece_at_square(&s) != None
+                            if self.get_piece_at_square(&s).is_some()
                                 && (if ep {
                                     self.en_passant.unwrap() != s
                                 } else {
@@ -856,13 +846,9 @@ impl Board {
             }
 
             Piece::Queen => {
-                let is_horizontal = if file_dif == 0 { false } else { true };
+                let is_horizontal = file_dif != 0;
 
-                let is_diagonal = if is_vertical && is_horizontal {
-                    true
-                } else {
-                    false
-                };
+                let is_diagonal = is_vertical && is_horizontal;
 
                 if is_diagonal {
                     let rank_coef = if rank_dif < 0 { -1 } else { 1 };
@@ -878,13 +864,13 @@ impl Board {
                         // checks the positions between the bishop and the final square
                         let new_rank = starting_square.rank + (rank_coef * i);
                         let new_file = ((starting_square.file as i8)
-                            + ((file_coef as i8) * (i as i8)))
+                            + ((file_coef as i8) * i))
                             as u8 as char;
 
                         match Square::new(new_file, new_rank) {
                             None => return false, //only if the square is outside the board, never triggers in practice
                             Some(s) => {
-                                if self.get_piece_at_square(&s) != None
+                                if self.get_piece_at_square(&s).is_some()
                                     && (if ep {
                                         self.en_passant.unwrap() != s
                                     } else {
@@ -897,34 +883,34 @@ impl Board {
                         }
                     }
                 } else {
-                    let steps: i8;
+                    
                     let mut rank_coef = 0;
                     let mut file_coef = 0;
 
                     if is_vertical {
                         rank_coef = if rank_dif > 0 { 1 } else { -1 };
-                        steps = rank_dif.abs().try_into().unwrap()
                     } else {
                         file_coef = if file_dif > 0 { 1 } else { -1 };
-                        steps = file_dif.abs()
                     };
+
+                    let steps: i8 = file_dif.abs();
 
                     for i in 1..steps {
                         // checks the positions between the rook and the final square
-                        let mut new_rank = starting_square.rank as i8;
+                        let mut new_rank = starting_square.rank;
                         let mut new_file = starting_square.file;
 
                         if is_vertical {
-                            new_rank = (starting_square.rank as i8) + (i * (rank_coef as i8));
+                            new_rank = starting_square.rank + (i * (rank_coef as i8));
                         } else {
                             new_file = ((starting_square.file as i8)
-                                + ((file_coef as i8) * (i as i8)))
+                                + ((file_coef as i8) * i))
                                 as u8 as char;
                         };
 
-                        match Square::new(new_file, new_rank.into()) {
+                        match Square::new(new_file, new_rank) {
                             Some(s) => {
-                                if self.get_piece_at_square(&s) != None
+                                if self.get_piece_at_square(&s).is_some()
                                     && (if ep {
                                         self.en_passant.unwrap() != s
                                     } else {
@@ -941,17 +927,6 @@ impl Board {
                     }
                 }
             }
-
-            /*
-            Piece::Pawn => { // convert moves that are promotions to promotions, because by default the mov gen does not do it in piece.rs
-                let final_rank = m.final_square().rank;
-
-                if final_rank == 1 { // black promotion
-
-                } else if final_rank == 8 { // white promotion
-
-                }
-            },*/
             _ => {}
         };
 
@@ -971,16 +946,11 @@ impl Board {
                                         && (starting_square.rank != 7)
                                     {
                                         false
-                                    } else {
-                                        if self.get_piece_at_square(&Square {
+                                    } else{ 
+                                        self.get_piece_at_square(&Square {
                                             rank: starting_square.rank - 1,
                                             file: starting_square.file,
-                                        }) != None
-                                        {
-                                            false
-                                        } else {
-                                            true
-                                        }
+                                        }).is_none()
                                     }
                                 }
                                 Color::White => {
@@ -988,16 +958,11 @@ impl Board {
                                         && (starting_square.rank != 2)
                                     {
                                         false
-                                    } else {
-                                        if self.get_piece_at_square(&Square {
+                                    } else { 
+                                        self.get_piece_at_square(&Square {
                                             rank: starting_square.rank + 1,
                                             file: starting_square.file,
-                                        }) != None
-                                        {
-                                            false
-                                        } else {
-                                            true
-                                        }
+                                        }).is_none()
                                     }
                                 }
                             }

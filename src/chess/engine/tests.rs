@@ -477,9 +477,8 @@ mod pos_6 {
     }
 }
 
+// This test suite comes from ethereal (https://github.com/AndyGrant/Ethereal), big thanks to Andy
 mod etheral_test_suite {
-    use super::*;
-
     mod pos_1 {
         use super::super::*;
 

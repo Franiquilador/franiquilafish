@@ -13,3 +13,6 @@ rand = "0.10"
 
 [profile.release]
 overflow-checks = true
+
+[lints.clippy]
+needless_range_loop = "allow"
