@@ -406,78 +406,54 @@ impl Board {
                 match c.to_digit(10) {
                     None => {
                         let piece: Option<ChessPiece> = match c {
-                            'r' => {
-                                Some(ChessPiece {
-                                    piece: Piece::Rook,
-                                    color: Color::Black,
-                                })
-                            }
-                            'n' => {
-                                Some(ChessPiece {
-                                    piece: Piece::Knight,
-                                    color: Color::Black,
-                                })
-                            }
-                            'b' => {
-                                Some(ChessPiece {
-                                    piece: Piece::Bishop,
-                                    color: Color::Black,
-                                })
-                            }
-                            'q' => {
-                                Some(ChessPiece {
-                                    piece: Piece::Queen,
-                                    color: Color::Black,
-                                })
-                            }
-                            'k' => {
-                                Some(ChessPiece {
-                                    piece: Piece::King,
-                                    color: Color::Black,
-                                })
-                            }
-                            'p' => {
-                                Some(ChessPiece {
-                                    piece: Piece::Pawn,
-                                    color: Color::Black,
-                                })
-                            }
-                            'P' => {
-                                Some(ChessPiece {
-                                    piece: Piece::Pawn,
-                                    color: Color::White,
-                                })
-                            }
-                            'R' => {
-                                Some(ChessPiece {
-                                    piece: Piece::Rook,
-                                    color: Color::White,
-                                })
-                            }
-                            'N' => {
-                                Some(ChessPiece {
-                                    piece: Piece::Knight,
-                                    color: Color::White,
-                                })
-                            }
-                            'B' => {
-                                Some(ChessPiece {
-                                    piece: Piece::Bishop,
-                                    color: Color::White,
-                                })
-                            }
-                            'Q' => {
-                                Some(ChessPiece {
-                                    piece: Piece::Queen,
-                                    color: Color::White,
-                                })
-                            }
-                            'K' => {
-                                Some(ChessPiece {
-                                    piece: Piece::King,
-                                    color: Color::White,
-                                })
-                            }
+                            'r' => Some(ChessPiece {
+                                piece: Piece::Rook,
+                                color: Color::Black,
+                            }),
+                            'n' => Some(ChessPiece {
+                                piece: Piece::Knight,
+                                color: Color::Black,
+                            }),
+                            'b' => Some(ChessPiece {
+                                piece: Piece::Bishop,
+                                color: Color::Black,
+                            }),
+                            'q' => Some(ChessPiece {
+                                piece: Piece::Queen,
+                                color: Color::Black,
+                            }),
+                            'k' => Some(ChessPiece {
+                                piece: Piece::King,
+                                color: Color::Black,
+                            }),
+                            'p' => Some(ChessPiece {
+                                piece: Piece::Pawn,
+                                color: Color::Black,
+                            }),
+                            'P' => Some(ChessPiece {
+                                piece: Piece::Pawn,
+                                color: Color::White,
+                            }),
+                            'R' => Some(ChessPiece {
+                                piece: Piece::Rook,
+                                color: Color::White,
+                            }),
+                            'N' => Some(ChessPiece {
+                                piece: Piece::Knight,
+                                color: Color::White,
+                            }),
+                            'B' => Some(ChessPiece {
+                                piece: Piece::Bishop,
+                                color: Color::White,
+                            }),
+                            'Q' => Some(ChessPiece {
+                                piece: Piece::Queen,
+                                color: Color::White,
+                            }),
+                            'K' => Some(ChessPiece {
+                                piece: Piece::King,
+                                color: Color::White,
+                            }),
                             _e => {
                                 // dbg!(e);
                                 panic!("invalid char in fen board");
@@ -751,7 +727,7 @@ impl Board {
         let is_ep_ghost = match self.en_passant {
             // check if the final square matches the en-passant target square
             None => false,
-            Some(s) => { s == *final_square  }
+            Some(s) => s == *final_square,
         };
 
         let moving_piece = self
@@ -780,8 +756,8 @@ impl Board {
                 for i in 1..steps {
                     // checks the positions between the bishop and the final square
                     let new_rank = starting_square.rank + (rank_coef * i);
-                    let new_file = ((starting_square.file as i8) + ((file_coef as i8) * (i as i8)))
-                        as u8 as char;
+                    let new_file =
+                        ((starting_square.file as i8) + ((file_coef as i8) * i)) as u8 as char;
 
                     match Square::new(new_file, new_rank) {
                         None => return false, //only if the square is outside the board, never triggers in practice
@@ -808,10 +784,13 @@ impl Board {
                     rank_coef = if rank_dif > 0 { 1 } else { -1 };
                 } else {
                     file_coef = if file_dif > 0 { 1 } else { -1 };
-                    
                 };
 
-                let steps = if is_vertical { rank_dif.abs() } else { file_dif.abs() };
+                let steps = if is_vertical {
+                    rank_dif.abs()
+                } else {
+                    file_dif.abs()
+                };
 
                 for i in 1..steps {
                     // checks the positions between the rook and the final square
@@ -821,8 +800,8 @@ impl Board {
                     if is_vertical {
                         new_rank = (starting_square.rank) + (i * (rank_coef as i8));
                     } else {
-                        new_file = ((starting_square.file as i8) + ((file_coef as i8) * i))
-                            as u8 as char;
+                        new_file =
+                            ((starting_square.file as i8) + ((file_coef as i8) * i)) as u8 as char;
                     };
 
                     match Square::new(new_file, new_rank) {
@@ -858,15 +837,14 @@ impl Board {
                     let steps = rank_dif.abs();
 
                     // if steps != file_dif.abs() {
-                        // return false; // not a diagonal move
+                    // return false; // not a diagonal move
                     // }
 
                     for i in 1..steps {
                         // checks the positions between the bishop and the final square
                         let new_rank = starting_square.rank + (rank_coef * i);
-                        let new_file = ((starting_square.file as i8)
-                            + ((file_coef as i8) * i))
-                            as u8 as char;
+                        let new_file =
+                            ((starting_square.file as i8) + ((file_coef as i8) * i)) as u8 as char;
 
                         match Square::new(new_file, new_rank) {
                             None => return false, //only if the square is outside the board, never triggers in practice
@@ -884,7 +862,6 @@ impl Board {
                         }
                     }
                 } else {
-                    
                     let mut rank_coef = 0;
                     let mut file_coef = 0;
 
@@ -894,7 +871,11 @@ impl Board {
                         file_coef = if file_dif > 0 { 1 } else { -1 };
                     };
 
-                    let steps: i8 = if is_vertical { rank_dif.abs() } else { file_dif.abs() };
+                    let steps: i8 = if is_vertical {
+                        rank_dif.abs()
+                    } else {
+                        file_dif.abs()
+                    };
 
                     for i in 1..steps {
                         // checks the positions between the rook and the final square
@@ -904,8 +885,7 @@ impl Board {
                         if is_vertical {
                             new_rank = starting_square.rank + (i * (rank_coef as i8));
                         } else {
-                            new_file = ((starting_square.file as i8)
-                                + ((file_coef as i8) * i))
+                            new_file = ((starting_square.file as i8) + ((file_coef as i8) * i))
                                 as u8 as char;
                         };
 
@@ -947,11 +927,12 @@ impl Board {
                                         && (starting_square.rank != 7)
                                     {
                                         false
-                                    } else{ 
+                                    } else {
                                         self.get_piece_at_square(&Square {
                                             rank: starting_square.rank - 1,
                                             file: starting_square.file,
-                                        }).is_none()
+                                        })
+                                        .is_none()
                                     }
                                 }
                                 Color::White => {
@@ -959,11 +940,12 @@ impl Board {
                                         && (starting_square.rank != 2)
                                     {
                                         false
-                                    } else { 
+                                    } else {
                                         self.get_piece_at_square(&Square {
                                             rank: starting_square.rank + 1,
                                             file: starting_square.file,
-                                        }).is_none()
+                                        })
+                                        .is_none()
                                     }
                                 }
                             }
@@ -996,13 +978,7 @@ impl Board {
                     // é capturável/da outra equipa
                     if is_ep_ghost {
                         match moving_piece.piece {
-                            Piece::Pawn => {
-                                if starting_square.file != final_square.file {
-                                    true
-                                } else {
-                                    false
-                                }
-                            }
+                            Piece::Pawn => starting_square.file != final_square.file,
                             _ => true, // enemy pieces can move there because it is actually an empty square, there is no piece there
                         }
                     } else {
@@ -1010,24 +986,12 @@ impl Board {
                             Piece::King => {
                                 // println!("falta a logica de cheque do rei");
                                 match moving_piece.piece {
-                                    Piece::Pawn => {
-                                        if starting_square.file != final_square.file {
-                                            true
-                                        } else {
-                                            false
-                                        }
-                                    } // so that the pawn cant capture the by moving forward
+                                    Piece::Pawn => starting_square.file != final_square.file, // so that the pawn cant capture the by moving forward
                                     _ => true,
                                 }
                             }
                             _ => match moving_piece.piece {
-                                Piece::Pawn => {
-                                    if starting_square.file != final_square.file {
-                                        true
-                                    } else {
-                                        false
-                                    }
-                                }
+                                Piece::Pawn => starting_square.file != final_square.file,
 
                                 Piece::Knight => {
                                     // todo!("falta logica de pins cheques, e peças no caminho quando nao é o cavalo a mexer");
@@ -1054,10 +1018,12 @@ impl Board {
                     match c {
                         'k' => {
                             // if the kings path is not in check -> the square f8, and if there are no pieces in f8 and g8
-                            if self.get_piece_at_square(&Square { rank: 8, file: 'f' }) != None {
-                                continue;
-                            } else if self.get_piece_at_square(&Square { rank: 8, file: 'g' })
-                                != None
+                            if self
+                                .get_piece_at_square(&Square { rank: 8, file: 'f' })
+                                .is_some()
+                                || self
+                                    .get_piece_at_square(&Square { rank: 8, file: 'g' })
+                                    .is_some()
                             {
                                 continue;
                             } else {
@@ -1070,14 +1036,15 @@ impl Board {
                         }
                         'q' => {
                             // if the kings path is not in check -> the square d8, and if there are no pieces in d8, c8 and b8
-                            if self.get_piece_at_square(&Square { rank: 8, file: 'd' }) != None {
-                                continue;
-                            } else if self.get_piece_at_square(&Square { rank: 8, file: 'c' })
-                                != None
-                            {
-                                continue;
-                            } else if self.get_piece_at_square(&Square { rank: 8, file: 'b' })
-                                != None
+                            if self
+                                .get_piece_at_square(&Square { rank: 8, file: 'd' })
+                                .is_some()
+                                || self
+                                    .get_piece_at_square(&Square { rank: 8, file: 'c' })
+                                    .is_some()
+                                || self
+                                    .get_piece_at_square(&Square { rank: 8, file: 'b' })
+                                    .is_some()
                             {
                                 continue;
                             } else {
@@ -1098,10 +1065,12 @@ impl Board {
                         'K' => {
                             // if the kings path is not in check -> the square f1(remove_checks handles this in engine.rs),
                             //  and if there are no pieces in f1 and g1
-                            if self.get_piece_at_square(&Square { rank: 1, file: 'f' }) != None {
-                                continue;
-                            } else if self.get_piece_at_square(&Square { rank: 1, file: 'g' })
-                                != None
+                            if self
+                                .get_piece_at_square(&Square { rank: 1, file: 'f' })
+                                .is_some()
+                                || self
+                                    .get_piece_at_square(&Square { rank: 1, file: 'g' })
+                                    .is_some()
                             {
                                 continue;
                             } else {
@@ -1114,14 +1083,15 @@ impl Board {
                         }
                         'Q' => {
                             // if the kings path is not in check -> the square d1, and if there are no pieces in d1, c1 and b1
-                            if self.get_piece_at_square(&Square { rank: 1, file: 'd' }) != None {
-                                continue;
-                            } else if self.get_piece_at_square(&Square { rank: 1, file: 'c' })
-                                != None
-                            {
-                                continue;
-                            } else if self.get_piece_at_square(&Square { rank: 1, file: 'b' })
-                                != None
+                            if self
+                                .get_piece_at_square(&Square { rank: 1, file: 'd' })
+                                .is_some()
+                                || self
+                                    .get_piece_at_square(&Square { rank: 1, file: 'c' })
+                                    .is_some()
+                                || self
+                                    .get_piece_at_square(&Square { rank: 1, file: 'b' })
+                                    .is_some()
                             {
                                 continue;
                             } else {
@@ -1139,6 +1109,7 @@ impl Board {
         }
     }
 
+    #[allow(clippy::nonminimal_bool)]
     pub fn is_a_castle(&self, m: Move) -> bool {
         let moving_piece = self.get_piece_at_square(&m.starting_square());
 
@@ -1162,20 +1133,10 @@ impl Board {
         let final_file = final_square.file;
         let final_rank = final_square.rank;
 
-        if starting_rank == 1 && final_rank == 1 && starting_file == 'e' && final_file == 'g' {
-            true
-        } else if starting_rank == 1 && final_rank == 1 && starting_file == 'e' && final_file == 'c'
-        {
-            true
-        } else if starting_rank == 8 && final_rank == 8 && starting_file == 'e' && final_file == 'g'
-        {
-            true
-        } else if starting_rank == 8 && final_rank == 8 && starting_file == 'e' && final_file == 'c'
-        {
-            true
-        } else {
-            false
-        }
+        (starting_rank == 1 && final_rank == 1 && starting_file == 'e' && final_file == 'g')
+            || (starting_rank == 1 && final_rank == 1 && starting_file == 'e' && final_file == 'c')
+            || (starting_rank == 8 && final_rank == 8 && starting_file == 'e' && final_file == 'g')
+            || (starting_rank == 8 && final_rank == 8 && starting_file == 'e' && final_file == 'c')
     }
 
     fn convert_promotions(&self, m: Move, valid_moves: &mut Vec<Move>) {

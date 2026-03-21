@@ -952,6 +952,7 @@ impl Engine {
         is_in_check // should never reach this return, because the king should be found somewhere in the board
     }
 
+    #[allow(clippy::too_many_arguments)]
     // in a max node: we define alpha, and test beta
     fn max_value(
         &self,
@@ -1065,6 +1066,7 @@ impl Engine {
         best
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn min_value(
         &self,
         depth: i32,
@@ -1176,6 +1178,7 @@ impl Engine {
         best
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn get_best_move(
         &self,
         depth: i32,
@@ -1198,7 +1201,7 @@ impl Engine {
         self.order_moves(&mut legal_moves, prev_bm);
 
         let mut best_move = *legal_moves
-            .get(0)
+            .first()
             .expect("stalemate or checkmate: no legal moves");
 
         let mut is_full_depth = true; // check if all the nodes up to this depth were searched, or if it stoped mid search
@@ -1295,6 +1298,8 @@ impl Engine {
         (best_move, best_eval, is_full_depth, total_nodes)
     }
 
+    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::manual_range_contains)]
     fn search_aux(
         &self,
         depth: &mut i32,
@@ -1306,12 +1311,11 @@ impl Engine {
         seldepth: &mut i32,
     ) {
         let mut eval: i32 = -1;
-        let is_full_depth: bool;
 
         let search_start = std::time::Instant::now();
-        let duration_ms;
         let mut nodes: u64 = 0;
 
+        /*
         match self.get_best_move(
             *depth,
             self.board.clone(),
@@ -1334,7 +1338,31 @@ impl Engine {
                     *info_printed = true;
                 }
             }
-        };
+        };*/
+
+        //destructuring using 4 let patterns
+        let (m, e, i_f_d, n) = self.get_best_move(
+            *depth,
+            self.board.clone(),
+            self.color,
+            eng_move_time,
+            start,
+            b_m.unwrap(),
+            Arc::clone(&stop_flag),
+            seldepth,
+        );
+
+        let duration_ms = search_start.elapsed().as_millis();
+
+        let is_full_depth = i_f_d;
+
+        if is_full_depth {
+            // if it was not stoped mid search
+            nodes = n;
+            *b_m = Some(m);
+            eval = e;
+            *info_printed = true;
+        }
 
         // #[cfg(feature = "uci_info")]
         if is_full_depth {
@@ -1406,6 +1434,7 @@ impl Engine {
 
         *depth += 1; // iterative deepening
     }
+
     // returns the best move and updates the move counts on the boards
     pub fn search(&mut self, times: Option<PlayerTimes>, stop_flag: Arc<AtomicBool>) -> String {
         let mut eng_move_time: i32 = 0;
@@ -1545,6 +1574,7 @@ impl Engine {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn quiescence_search_black(
         &self,
         board: Board,
@@ -1633,6 +1663,7 @@ impl Engine {
         best
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn quiescence_search_white(
         &self,
         board: Board,

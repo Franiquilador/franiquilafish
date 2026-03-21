@@ -47,8 +47,8 @@ impl Move {
     pub fn from_squares(start: Square, end: Square, promotion: Option<Promotion>) -> Self {
         Move {
             initial: start,
-            end: end,
-            promotion: promotion,
+            end,
+            promotion,
         } // no promotion by default when generating all moves
     }
 
@@ -96,10 +96,7 @@ impl Square {
     // returns None if the position is outside the board
     pub fn new(file: char, rank: i8) -> Option<Self> {
         if ('a'..='h').contains(&file) && (1..=8).contains(&rank) {
-            Some(Square {
-                file: file,
-                rank: rank,
-            })
+            Some(Square { file, rank })
         } else {
             None
         }
@@ -111,24 +108,21 @@ impl Square {
         let rank = chars.next()?.to_digit(BASE_TEN).map(|d| d as i8)?;
 
         if ('a'..='h').contains(&file) && (1..=8).contains(&rank) {
-            Some(Square {
-                file: file,
-                rank: rank,
-            })
+            Some(Square { file, rank })
         } else {
             None
         }
     }
 
-    // returns None if the position is outside the board
-    pub fn offset(&self, file_offset: i8, rank_offset: i32) -> Option<Square> {
+    /// returns [None] if the position is outside the board
+    pub fn offset(&self, file_offset: i8, rank_offset: i8) -> Option<Square> {
         let new_file = (self.file as i8 + file_offset) as u8 as char;
-        let new_rank = self.rank as i32 + rank_offset;
+        let new_rank = self.rank + rank_offset;
 
-        Square::new(new_file, new_rank as i8)
+        Square::new(new_file, new_rank)
     }
 
-    fn to_uci(&self) -> String {
+    fn to_uci(self) -> String {
         format!("{}{}", self.file, self.rank)
     }
 }

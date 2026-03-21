@@ -146,11 +146,8 @@ fn search_thread(stop_clone: Arc<AtomicBool>, consumer: Receiver<String>) {
                     "position" => {
                         let fen_or_startpos_opt = parts.iter().find(|s| **s == "fen");
 
-                        let is_fen = match fen_or_startpos_opt {
-                            // if its not fen it must be startpos
-                            None => false,
-                            Some(_) => true,
-                        };
+                        // if its not fen it must be startpos
+                        let is_fen = fen_or_startpos_opt.is_some();
 
                         if is_fen {
                             let fen_parts = parts
@@ -205,11 +202,11 @@ fn search_thread(stop_clone: Arc<AtomicBool>, consumer: Receiver<String>) {
                             .unwrap_or(0);
 
                         times = PlayerTimes {
-                            wtime: wtime,
-                            btime: btime,
-                            winc: winc,
-                            binc: binc,
-                            movetime: movetime,
+                            wtime,
+                            btime,
+                            winc,
+                            binc,
+                            movetime,
                         };
                         let mut time = None; // we assume go infinite was sent until proven otherwise
                         if (btime != 0 && wtime != 0) || movetime != 0 {
@@ -220,7 +217,7 @@ fn search_thread(stop_clone: Arc<AtomicBool>, consumer: Receiver<String>) {
 
                         let best_move = engine.search(time, Arc::clone(&stop_clone));
 
-                        print!("bestmove {best_move}\n");
+                        println!("bestmove {best_move}");
                         stdout().flush().unwrap();
                     }
                     _ => { /*panic!("empty first string");*/ } //  unreachable
@@ -237,6 +234,7 @@ fn id_outputs() {
     stdout().flush().unwrap();
 }
 
+#[allow(clippy::clone_on_copy)]
 fn _print_board(pieces: [[Option<ChessPiece>; 8]; 8], active_player: &Color) {
     println!("  +---+---+---+---+---+---+---+---+");
 

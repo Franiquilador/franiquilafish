@@ -1,5 +1,3 @@
-use std::usize;
-
 use crate::chess::move_square::{Move, Square};
 // use crate::chess::game::Color;
 use crate::chess::engine::Color;
@@ -94,33 +92,39 @@ impl ChessPiece {
             _ => 0,
         }
     }
-/* everything bellow inside /// will be rendered as markdown,
-and also rendered as rust code and doc test there are 3 backticks forming a block:
-```
-code here
-```
-*/
+    /* everything bellow inside /// will be rendered as markdown,
+    and also rendered as rust code and doc test there are 3 backticks forming a block:
+    ```
+    code here
+    ```
+    */
 
     /// `if let` in rust means "if I can let this patern match, then do this".
-    /// 
+    ///
     /// The `let` keyword in rust is used exclusively for patterns
     /// when assigning a variable, the let keyword is always for a pattern on the left, and a value on the right:
-    /// 
+    ///
+    // let number = 4; "number" is a trivial pattern which matches with almost anything when creating the variable
+    //
+    // let x = 5;           // pattern: always matches
+    // let (a, b) = (1, 2); // pattern: destructure a tuple
+    // if let Some(x) = val // pattern: might not match, so make it conditional
+    //
     /// the `match` bellow in the *source code comment* is equivalent to the `if let`, just more verbose:
     ///    
     /// comer na **diagonal direita**
-    /// 
-    /// 
+    ///
+    ///
     // match pos.offset(1, -1) {
     //     Some(s) => moves.push(Move::from_squares(*pos, s, None)),
     //     None => {}
     // };
-    // 
+    //
     // if let Some(s) = pos.offset(1, -1) {
     //     moves.push(Move::from_squares(*pos, s, None));
     // }
-    /// 
-    /// 
+    ///
+    ///
     pub fn all_moves(&self, pos: &Square) -> Vec<Move> {
         // calcula os movimentos potenciais de cada peça, a maior parte sao ilegais
         let mut moves = vec![];
@@ -129,151 +133,123 @@ code here
             Piece::Pawn => {
                 match self.color {
                     Color::Black => {
-                        match pos.offset(0, -2) {
+                        if let Some(s) = pos.offset(0, -2) {
                             //andar 2 para a frente
-                            Some(s) => moves.push(Move::from_squares(*pos, s, None)),
-                            None => {}
+                            moves.push(Move::from_squares(*pos, s, None));
                         };
 
-                        match pos.offset(0, -1) {
+                        if let Some(s) = pos.offset(0, -1) {
                             //andar 1 para a frente
-                            Some(s) => {
-                                moves.push(Move::from_squares(*pos, s, None));
-                            }
-                            None => {}
+                            moves.push(Move::from_squares(*pos, s, None));
                         };
 
-                        //comer na diagonal direita
-                        match pos.offset(1, -1) {
-                            // file offset of one means "b" if pos is in "a"
-                            Some(s) => moves.push(Move::from_squares(*pos, s, None)),
-                            None => {}
+                        // file offset of one means "b" if pos is in "a"
+                        if let Some(s) = pos.offset(1, -1) {
+                            //comer na diagonal direita
+                            moves.push(Move::from_squares(*pos, s, None));
                         };
 
-                        match pos.offset(-1, -1) {
+                        if let Some(s) = pos.offset(-1, -1) {
                             //comer na diagonal esquerda
-                            Some(s) => moves.push(Move::from_squares(*pos, s, None)),
-                            None => {}
+                            moves.push(Move::from_squares(*pos, s, None));
                         };
                     }
 
                     Color::White => {
-                        match pos.offset(0, 2) {
+                        if let Some(s) = pos.offset(0, 2) {
                             //andar 2 para a frente
-                            Some(s) => moves.push(Move::from_squares(*pos, s, None)),
-                            None => {}
+                            moves.push(Move::from_squares(*pos, s, None));
                         };
 
-                        match pos.offset(0, 1) {
+                        if let Some(s) = pos.offset(0, 1) {
                             //andar 1 para a frente
-                            Some(s) => {
-                                moves.push(Move::from_squares(*pos, s, None));
-                            }
-                            None => {}
+                            moves.push(Move::from_squares(*pos, s, None));
                         };
 
-                        //comer na diagonal direita
-                        match pos.offset(1, 1) {
-                            // file offset of one means "b" if pos is in "a"
-                            Some(s) => moves.push(Move::from_squares(*pos, s, None)),
-                            None => {}
+                        // file offset of one means "b" if pos is in "a"
+                        if let Some(s) = pos.offset(1, 1) {
+                            //comer na diagonal direita
+                            moves.push(Move::from_squares(*pos, s, None));
                         };
 
-                        match pos.offset(-1, 1) {
+                        if let Some(s) = pos.offset(-1, 1) {
                             //comer na diagonal esquerda
-                            Some(s) => moves.push(Move::from_squares(*pos, s, None)),
-                            None => {}
+                            moves.push(Move::from_squares(*pos, s, None));
                         };
                     }
                 }
             }
 
             Piece::Knight => {
-                match pos.offset(-1, 2) {
-                    Some(s) => moves.push(Move::from_squares(*pos, s, None)),
-                    None => {}
+                if let Some(s) = pos.offset(-1, 2) {
+                    moves.push(Move::from_squares(*pos, s, None));
                 };
 
-                match pos.offset(1, 2) {
-                    Some(s) => moves.push(Move::from_squares(*pos, s, None)),
-                    None => {}
+                if let Some(s) = pos.offset(1, 2) {
+                    moves.push(Move::from_squares(*pos, s, None));
                 };
 
-                match pos.offset(2, 1) {
-                    Some(s) => moves.push(Move::from_squares(*pos, s, None)),
-                    None => {}
+                if let Some(s) = pos.offset(2, 1) {
+                    moves.push(Move::from_squares(*pos, s, None));
                 };
 
-                match pos.offset(2, -1) {
-                    Some(s) => moves.push(Move::from_squares(*pos, s, None)),
-                    None => {}
+                if let Some(s) = pos.offset(2, -1) {
+                    moves.push(Move::from_squares(*pos, s, None));
                 };
 
-                match pos.offset(1, -2) {
-                    Some(s) => moves.push(Move::from_squares(*pos, s, None)),
-                    None => {}
+                if let Some(s) = pos.offset(1, -2) {
+                    moves.push(Move::from_squares(*pos, s, None));
                 };
 
-                match pos.offset(-1, -2) {
-                    Some(s) => moves.push(Move::from_squares(*pos, s, None)),
-                    None => {}
+                if let Some(s) = pos.offset(-1, -2) {
+                    moves.push(Move::from_squares(*pos, s, None));
                 };
 
-                match pos.offset(-2, -1) {
-                    Some(s) => moves.push(Move::from_squares(*pos, s, None)),
-                    None => {}
+                if let Some(s) = pos.offset(-2, -1) {
+                    moves.push(Move::from_squares(*pos, s, None));
                 };
 
-                match pos.offset(-2, 1) {
-                    Some(s) => moves.push(Move::from_squares(*pos, s, None)),
-                    None => {}
+                if let Some(s) = pos.offset(-2, 1) {
+                    moves.push(Move::from_squares(*pos, s, None));
                 };
             }
 
             Piece::Bishop => {
                 for i in 1..8 {
-                    match pos.offset(i, i.into()) {
-                        Some(s) => moves.push(Move::from_squares(*pos, s, None)),
-                        None => {}
+                    if let Some(s) = pos.offset(i, i) {
+                        moves.push(Move::from_squares(*pos, s, None));
                     };
 
-                    match pos.offset(i, (-i).into()) {
-                        Some(s) => moves.push(Move::from_squares(*pos, s, None)),
-                        None => {}
+                    if let Some(s) = pos.offset(i, -i) {
+                        moves.push(Move::from_squares(*pos, s, None));
                     };
 
-                    match pos.offset(-i, (-i).into()) {
-                        Some(s) => moves.push(Move::from_squares(*pos, s, None)),
-                        None => {}
+                    if let Some(s) = pos.offset(-i, -i) {
+                        moves.push(Move::from_squares(*pos, s, None));
                     };
 
-                    match pos.offset(-i, i.into()) {
-                        Some(s) => moves.push(Move::from_squares(*pos, s, None)),
-                        None => {}
+                    if let Some(s) = pos.offset(-i, i) {
+                        moves.push(Move::from_squares(*pos, s, None));
                     };
                 }
             }
 
             Piece::Rook => {
                 for i in 1..8 {
-                    match pos.offset(i, 0) {
-                        Some(s) => moves.push(Move::from_squares(*pos, s, None)),
-                        None => {}
+                    if let Some(s) = pos.offset(i, 0) {
+                        moves.push(Move::from_squares(*pos, s, None));
                     };
 
-                    match pos.offset(-i, 0) {
-                        Some(s) => moves.push(Move::from_squares(*pos, s, None)),
-                        None => {}
+                    if let Some(s) = pos.offset(-i, 0) {
+                        moves.push(Move::from_squares(*pos, s, None));
                     };
 
-                    match pos.offset(0, i.into()) {
-                        Some(s) => moves.push(Move::from_squares(*pos, s, None)),
-                        None => {}
+                    if let Some(s) = pos.offset(0, i) {
+                        moves.push(Move::from_squares(*pos, s, None));
                     };
 
-                    match pos.offset(0, (-i).into()) {
-                        Some(s) => moves.push(Move::from_squares(*pos, s, None)),
-                        None => {}
+                    if let Some(s) = pos.offset(0, -i) {
+                        moves.push(Move::from_squares(*pos, s, None));
                     };
                 }
             }
@@ -281,92 +257,72 @@ code here
             Piece::Queen => {
                 for i in 1..8 {
                     //bishops moves
-                    match pos.offset(i, i.into()) {
-                        Some(s) => moves.push(Move::from_squares(*pos, s, None)),
-                        None => {}
+                    if let Some(s) = pos.offset(i, i) {
+                        moves.push(Move::from_squares(*pos, s, None));
                     };
 
-                    match pos.offset(i, (-i).into()) {
-                        Some(s) => moves.push(Move::from_squares(*pos, s, None)),
-                        None => {}
+                    if let Some(s) = pos.offset(i, -i) {
+                        moves.push(Move::from_squares(*pos, s, None));
                     };
 
-                    match pos.offset(-i, (-i).into()) {
-                        Some(s) => moves.push(Move::from_squares(*pos, s, None)),
-                        None => {}
+                    if let Some(s) = pos.offset(-i, -i) {
+                        moves.push(Move::from_squares(*pos, s, None));
                     };
 
-                    match pos.offset(-i, i.into()) {
-                        Some(s) => moves.push(Move::from_squares(*pos, s, None)),
-                        None => {}
+                    if let Some(s) = pos.offset(-i, i) {
+                        moves.push(Move::from_squares(*pos, s, None));
                     };
 
                     //rooks moves
-                    match pos.offset(i, 0) {
-                        Some(s) => moves.push(Move::from_squares(*pos, s, None)),
-                        None => {}
+                    if let Some(s) = pos.offset(i, 0) {
+                        moves.push(Move::from_squares(*pos, s, None));
                     };
 
-                    match pos.offset(-i, 0) {
-                        Some(s) => moves.push(Move::from_squares(*pos, s, None)),
-                        None => {}
+                    if let Some(s) = pos.offset(-i, 0) {
+                        moves.push(Move::from_squares(*pos, s, None));
                     };
 
-                    match pos.offset(0, i.into()) {
-                        Some(s) => moves.push(Move::from_squares(*pos, s, None)),
-                        None => {}
+                    if let Some(s) = pos.offset(0, i) {
+                        moves.push(Move::from_squares(*pos, s, None));
                     };
 
-                    match pos.offset(0, (-i).into()) {
-                        Some(s) => moves.push(Move::from_squares(*pos, s, None)),
-                        None => {}
+                    if let Some(s) = pos.offset(0, -i) {
+                        moves.push(Move::from_squares(*pos, s, None));
                     };
                 }
             }
 
             Piece::King => {
-                match pos.offset(0, 1) {
-                    // cima
-                    Some(s) => moves.push(Move::from_squares(*pos, s, None)),
-                    None => {}
+                if let Some(s) = pos.offset(0, 1) {
+                    moves.push(Move::from_squares(*pos, s, None));
                 };
 
-                match pos.offset(1, 0) {
-                    // direita
-                    Some(s) => moves.push(Move::from_squares(*pos, s, None)),
-                    None => {}
+                if let Some(s) = pos.offset(1, 0) {
+                    moves.push(Move::from_squares(*pos, s, None));
                 };
 
-                match pos.offset(1, 1) {
-                    Some(s) => moves.push(Move::from_squares(*pos, s, None)),
-                    None => {}
+                if let Some(s) = pos.offset(1, 1) {
+                    moves.push(Move::from_squares(*pos, s, None));
                 };
 
-                match pos.offset(0, -1) {
-                    // baixo
-                    Some(s) => moves.push(Move::from_squares(*pos, s, None)),
-                    None => {}
+                if let Some(s) = pos.offset(0, -1) {
+                    moves.push(Move::from_squares(*pos, s, None));
                 };
 
-                match pos.offset(-1, 0) {
-                    // esquerda
-                    Some(s) => moves.push(Move::from_squares(*pos, s, None)),
-                    None => {}
+                if let Some(s) = pos.offset(-1, 0) {
+                    moves.push(Move::from_squares(*pos, s, None));
                 };
 
-                match pos.offset(-1, -1) {
-                    Some(s) => moves.push(Move::from_squares(*pos, s, None)),
-                    None => {}
+                if let Some(s) = pos.offset(-1, -1) {
+                    moves.push(Move::from_squares(*pos, s, None));
                 };
 
-                match pos.offset(1, -1) {
-                    Some(s) => moves.push(Move::from_squares(*pos, s, None)),
-                    None => {}
+                if let Some(s) = pos.offset(1, -1) {
+                    moves.push(Move::from_squares(*pos, s, None));
                 };
 
-                match pos.offset(-1, 1) {
-                    Some(s) => moves.push(Move::from_squares(*pos, s, None)),
-                    None => {}
+                if let Some(s) = pos.offset(-1, 1) {
+                    moves.push(Move::from_squares(*pos, s, None));
                 };
             }
         };
