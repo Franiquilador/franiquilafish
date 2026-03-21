@@ -801,8 +801,8 @@ impl Board {
             }
 
             Piece::Rook => {
-                let mut rank_coef = 0;
-                let mut file_coef = 0;
+                let mut rank_coef: i32 = 0;
+                let mut file_coef: i32 = 0;
 
                 if is_vertical {
                     rank_coef = if rank_dif > 0 { 1 } else { -1 };
@@ -811,7 +811,7 @@ impl Board {
                     
                 };
 
-                let steps = file_dif.abs();
+                let steps = if is_vertical { rank_dif.abs() } else { file_dif.abs() };
 
                 for i in 1..steps {
                     // checks the positions between the rook and the final square
@@ -856,9 +856,10 @@ impl Board {
                     let file_coef = if file_dif < 0 { -1 } else { 1 };
 
                     let steps = rank_dif.abs();
-                    if steps != file_dif.abs() {
-                        return false; // Not a diagonal move!
-                    }
+
+                    // if steps != file_dif.abs() {
+                        // return false; // not a diagonal move
+                    // }
 
                     for i in 1..steps {
                         // checks the positions between the bishop and the final square
@@ -893,7 +894,7 @@ impl Board {
                         file_coef = if file_dif > 0 { 1 } else { -1 };
                     };
 
-                    let steps: i8 = file_dif.abs();
+                    let steps: i8 = if is_vertical { rank_dif.abs() } else { file_dif.abs() };
 
                     for i in 1..steps {
                         // checks the positions between the rook and the final square

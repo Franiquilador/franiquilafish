@@ -12,7 +12,6 @@ pub mod chess;
 ///
 /// this phrase apears rendered because it is a doc
 //  this one is just a code comment, not documentation
-
 /// # Example
 /// ```
 // it is normal for the rust analyzer to give this error in the doc test

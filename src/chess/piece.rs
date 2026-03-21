@@ -106,20 +106,20 @@ code here
     /// The `let` keyword in rust is used exclusively for patterns
     /// when assigning a variable, the let keyword is always for a pattern on the left, and a value on the right:
     /// 
-    /// the `match` bellow is equivalent to the `if let`, just more verbose:
+    /// the `match` bellow in the *source code comment* is equivalent to the `if let`, just more verbose:
     ///    
-    /// comer na diagonal direita
+    /// comer na **diagonal direita**
     /// 
-    /// ```
-    /// match pos.offset(1, -1) {
-    ///     Some(s) => moves.push(Move::from_squares(*pos, s, None)),
-    ///     None => {}
-    /// };
     /// 
-    /// if let Some(s) = pos.offset(1, -1) {
-    ///     moves.push(Move::from_squares(*pos, s, None));
-    /// }
-    /// ```
+    // match pos.offset(1, -1) {
+    //     Some(s) => moves.push(Move::from_squares(*pos, s, None)),
+    //     None => {}
+    // };
+    // 
+    // if let Some(s) = pos.offset(1, -1) {
+    //     moves.push(Move::from_squares(*pos, s, None));
+    // }
+    /// 
     /// 
     pub fn all_moves(&self, pos: &Square) -> Vec<Move> {
         // calcula os movimentos potenciais de cada peça, a maior parte sao ilegais
