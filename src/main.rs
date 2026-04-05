@@ -17,9 +17,13 @@ use std::sync::{
 };
 use std::thread;
 
-// time, serde
+//here env!() macro reads the env variable that was passed in from the build script build.rs
+const GIT_HASH: &str = env!("GIT_COMMIT");
+
+// todo: serde
 fn main() {
     // let mut engine = Engine::new();
+    //show_version();
 
     let mut input = String::new();
 
@@ -45,6 +49,10 @@ fn main() {
     for c in t {
         print!("{}", c);
     }*/
+}
+
+fn show_version() {
+    println!("this binary was built from commit with hash {GIT_HASH}");
 }
 
 fn uci() {
